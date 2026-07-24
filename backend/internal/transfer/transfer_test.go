@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -380,9 +381,24 @@ func TestPromptConflictApplyToAll(t *testing.T) {
 
 func TestCancelLeavesNoFinalName(t *testing.T) {
 	_, rw, _, mgr, _ := setupVolumes(t)
-	// Large enough to cancel mid-copy
-	big := bytes.Repeat([]byte("x"), 8<<20) // 8 MiB
+	big := bytes.Repeat([]byte("x"), 1<<20)
 	_ = os.WriteFile(filepath.Join(filepath.Dir(rw), "ro", "big.bin"), big, 0o644)
+
+	reachedClose := make(chan struct{})
+	releaseClose := make(chan struct{})
+	var reachedOnce sync.Once
+	var releaseOnce sync.Once
+	mgr.SetTestHooks(func(stage string) error {
+		if stage == transfer.StageAfterCopyClose {
+			reachedOnce.Do(func() { close(reachedClose) })
+			<-releaseClose
+		}
+		return nil
+	}, nil)
+	t.Cleanup(func() {
+		releaseOnce.Do(func() { close(releaseClose) })
+		mgr.SetTestHooks(nil, nil)
+	})
 
 	job, err := mgr.Create(transfer.CreateRequest{
 		Kind: transfer.KindCopy, SourceVolumeID: "fixture-ro", SourcePath: "big.bin",
@@ -391,22 +407,16 @@ func TestCancelLeavesNoFinalName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Wait until running with some progress
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		j, _ := mgr.Get(job.ID)
-		if j.Status == transfer.StatusRunning && j.BytesDone > 0 {
-			break
-		}
-		if j.Status == transfer.StatusCompleted {
-			t.Fatal("finished too fast to cancel")
-		}
-		time.Sleep(5 * time.Millisecond)
+	select {
+	case <-reachedClose:
+	case <-time.After(3 * time.Second):
+		t.Fatal("copy did not reach the deterministic cancellation point")
 	}
 	_, err = mgr.Cancel(job.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
+	releaseOnce.Do(func() { close(releaseClose) })
 	done := waitStatus(t, mgr, job.ID, transfer.StatusCancelled, transfer.StatusFailed)
 	if done.Status != transfer.StatusCancelled && done.Status != transfer.StatusFailed {
 		t.Fatalf("status %s", done.Status)

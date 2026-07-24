@@ -4,6 +4,12 @@ set -eu
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$project_dir"
 
+docker_desktop_bin=/Applications/Docker.app/Contents/Resources/bin
+if [ -d "$docker_desktop_bin" ]; then
+  PATH="$PATH:$docker_desktop_bin"
+  export PATH
+fi
+
 umask 077
 mkdir -p backups
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)

@@ -4,6 +4,15 @@ set -eu
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$project_dir"
 
+# Non-interactive macOS shells do not always inherit Docker Desktop's CLI
+# directory. It contains both docker and the credential helper needed to pull
+# public images.
+docker_desktop_bin=/Applications/Docker.app/Contents/Resources/bin
+if [ -d "$docker_desktop_bin" ]; then
+  PATH="$PATH:$docker_desktop_bin"
+  export PATH
+fi
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "Docker is required: https://docs.docker.com/engine/install/" >&2
   exit 1

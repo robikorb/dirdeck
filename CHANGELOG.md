@@ -18,6 +18,7 @@ after the first stable release.
 - Image, media, text, Markdown, JSON, source-code, and DOCX previews.
 - Favorites, recent folders, persistent pane state, and keyboard shortcuts.
 - Guided Docker setup, persistent state volume, backup, and update scripts.
+- Docker Desktop credential-helper discovery in non-interactive macOS shells.
 - amd64 and arm64-compatible source build.
 - Original SVG wordmark, app icon, favicon, and in-app brand treatment.
 

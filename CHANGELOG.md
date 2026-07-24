@@ -9,6 +9,9 @@ after the first stable release.
 
 - The login form no longer assumes that every installation uses `admin` as its
   administrator username.
+- Folder listings now refresh when the browser regains focus, every 30 seconds
+  while visible, from a per-pane refresh button, or by clicking the active
+  volume again.
 
 ## 0.1.0-rc.2 - 2026-07-24
 

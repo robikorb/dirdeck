@@ -16,6 +16,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Pencil,
+  RefreshCw,
   Star,
   StarOff,
   Square,
@@ -236,7 +237,7 @@ function Pane({
   useEffect(() => {
     if (!state.volumeId) return
     let cancelled = false
-    onChange({ ...state, loading: true, error: null })
+    onChange({ ...state, loading: state.entries.length === 0, error: null })
     void listDir(state.volumeId, state.path)
       .then((result) => {
         if (cancelled) return
@@ -345,6 +346,15 @@ function Pane({
           {volume && !volume.available ? <span className="badge-warn"> offline</span> : null}
         </h2>
         <div className="topbar-actions">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Refresh folder"
+            title="Refresh folder"
+            onClick={() => onChange({ ...state, reloadToken: state.reloadToken + 1 })}
+          >
+            <RefreshCw size={16} />
+          </button>
           <button
             type="button"
             className="icon-btn"
@@ -671,6 +681,20 @@ export default function App() {
       .catch(() => undefined)
   }, [])
 
+  const selectVolume = useCallback((volumeId: string) => {
+    const current = activePane === 'left' ? left : right
+    if (current.volumeId === volumeId) {
+      if (activePane === 'left') {
+        setLeft((pane) => ({ ...pane, reloadToken: pane.reloadToken + 1 }))
+      } else {
+        setRight((pane) => ({ ...pane, reloadToken: pane.reloadToken + 1 }))
+      }
+      void refreshVolumes().catch(() => undefined)
+      return
+    }
+    navigatePane(activePane, volumeId, '')
+  }, [activePane, left, navigatePane, refreshVolumes, right])
+
   const bootstrap = useCallback(async () => {
     const session = await getSession()
     if (!session.authenticated) {
@@ -805,9 +829,15 @@ export default function App() {
         window.clearTimeout(retryTimer)
         connect()
         void refreshVolumes().catch(() => undefined)
+        refreshPanes()
       }
     }
+    const onFocus = () => {
+      void refreshVolumes().catch(() => undefined)
+      refreshPanes()
+    }
     document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('focus', onFocus)
     retryTimer = window.setInterval(() => {
       void listTransfers()
         .then((list) => {
@@ -815,11 +845,13 @@ export default function App() {
         })
         .catch(() => undefined)
       void refreshVolumes().catch(() => undefined)
+      if (document.visibilityState === 'visible') refreshPanes()
     }, 30000)
 
     return () => {
       closed = true
       document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('focus', onFocus)
       window.clearTimeout(retryTimer)
       stop?.()
     }
@@ -1395,7 +1427,7 @@ export default function App() {
                   <button
                     type="button"
                     className={left.volumeId === v.id || right.volumeId === v.id ? 'active' : ''}
-                    onClick={() => navigatePane(activePane, v.id, '')}
+                    onClick={() => selectVolume(v.id)}
                   >
                     <HardDrive size={14} />
                     <span className="side-label">

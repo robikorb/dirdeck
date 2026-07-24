@@ -1,0 +1,20 @@
+# Build context exclusions
+**/node_modules
+**/dist
+**/.git
+**/*.db
+**/data
+frontend/dist
+backend/bin
+.DS_Store
+.env
+.env.*
+!.env.example
+backups
+secrets/*
+!secrets/.gitkeep
+config/volumes.yaml
+compose.override.yml
+.cursor
+CURSOR-HANDOFF.md
+frontend/src/assets/hero.png

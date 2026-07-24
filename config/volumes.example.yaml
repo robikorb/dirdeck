@@ -1,0 +1,13 @@
+volumes:
+  - id: fixture-ro
+    name: Read-only fixture
+    path: /mnt/volumes/fixture-ro
+    readOnly: true
+    showHiddenFiles: false
+    thumbnails: true
+  - id: fixture-rw
+    name: Read-write fixture
+    path: /mnt/volumes/fixture-rw
+    readOnly: false
+    showHiddenFiles: false
+    thumbnails: true

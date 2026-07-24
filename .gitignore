@@ -1,0 +1,42 @@
+# Local environment
+.env
+.env.*
+!.env.example
+
+# JavaScript
+node_modules/
+dist/
+coverage/
+
+# Go
+bin/
+*.test
+*.out
+
+# Runtime state and mounted data
+data/
+storage/
+backups/
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets — local-only; never commit real credentials
+# Documented in docs/INSTALL.md — keep secrets/ contents off git
+secrets/*
+!secrets/.gitkeep
+secrets/admin_username
+secrets/admin_password
+
+# Config used by local compose (example is tracked)
+config/volumes.yaml
+compose.override.yml
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.cursor/
+CURSOR-HANDOFF.md
+frontend/src/assets/hero.png

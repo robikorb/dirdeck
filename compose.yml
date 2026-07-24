@@ -1,0 +1,55 @@
+# Liquid Glass File Manager default Compose stack.
+# The bundled mounts expose disposable fixtures only. Add explicitly approved
+# host paths using the read-only-first procedure in docs/STORAGE-MOUNTS.md.
+
+services:
+  file-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${LGFM_PORT:-3002}:8080"
+    restart: unless-stopped
+    environment:
+      LGFM_LISTEN_ADDR: ":8080"
+      LGFM_DATA_DIR: /var/lib/file-manager
+      LGFM_VOLUMES_FILE: /etc/liquid-glass-file-manager/volumes.yaml
+      LGFM_ADMIN_USERNAME_FILE: /run/secrets/admin_username
+      LGFM_ADMIN_PASSWORD_FILE: /run/secrets/admin_password
+      LGFM_SECURE_COOKIE: "${LGFM_SECURE_COOKIE:-false}"
+      PUID: "${PUID:-1000}"
+      PGID: "${PGID:-1000}"
+      UMASK: "${UMASK:-022}"
+    volumes:
+      - type: bind
+        source: ./config/volumes.yaml
+        target: /etc/liquid-glass-file-manager/volumes.yaml
+        read_only: true
+      - type: bind
+        source: ./secrets/admin_username
+        target: /run/secrets/admin_username
+        read_only: true
+      - type: bind
+        source: ./secrets/admin_password
+        target: /run/secrets/admin_password
+        read_only: true
+      - type: bind
+        source: ./fixtures/ro
+        target: /mnt/volumes/fixture-ro
+        read_only: true
+      - type: bind
+        source: ./fixtures/rw
+        target: /mnt/volumes/fixture-rw
+      - type: volume
+        source: app-state
+        target: /var/lib/file-manager
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  app-state:
+    name: "${LGFM_DATA_VOLUME:-liquid-glass-file-manager_app-state}"

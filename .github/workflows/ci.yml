@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache-dependency-path: backend/go.sum
+      - name: Test
+        working-directory: backend
+        run: go test ./...
+      - name: Vet
+        working-directory: backend
+        run: go vet ./...
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare disposable configuration
+        run: |
+          cp .env.example .env
+          cp config/volumes.example.yaml config/volumes.yaml
+          cp compose.override.example.yml compose.override.yml
+          printf 'ci-admin\n' > secrets/admin_username
+          printf 'ci-only-long-password\n' > secrets/admin_password
+      - name: Validate Compose
+        run: docker compose config
+      - name: Build container
+        run: docker compose build

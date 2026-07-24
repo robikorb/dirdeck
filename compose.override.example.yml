@@ -1,0 +1,13 @@
+# Copy this file to compose.override.yml. Docker Compose loads it
+# automatically. Keep host-specific mounts here so compose.yml remains
+# upgradeable from Git.
+services:
+  file-manager:
+    volumes:
+      # Start real storage read-only. The target must be unique and below
+      # /mnt/volumes. Add a matching entry to config/volumes.yaml.
+      #
+      # - type: bind
+      #   source: /path/on/the/host
+      #   target: /mnt/volumes/media
+      #   read_only: true

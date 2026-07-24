@@ -130,7 +130,13 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="login-page">
       <form className="glass login-card" onSubmit={onSubmit}>
-        <h1>Liquid Glass</h1>
+        <div className="login-brand">
+          <img src="/app-icon.svg" alt="" />
+          <div>
+            <h1>Liquid Glass</h1>
+            <span>File Manager</span>
+          </div>
+        </div>
         <p>Sign in to browse configured storage volumes.</p>
         <label>
           Username
@@ -1285,7 +1291,7 @@ export default function App() {
     <div className="app-shell">
       <nav className="glass rail" aria-label="Locations">
         <div className="rail-brand" aria-hidden>
-          <HardDrive size={18} />
+          <img src="/app-icon.svg" alt="" />
         </div>
         <button
           type="button"

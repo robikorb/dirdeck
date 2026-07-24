@@ -58,6 +58,6 @@ Promote the candidate to `v0.1.0` only when:
 - documentation contains every required step;
 - no secret or local absolute path is tracked.
 
-The repository URL in `README.md`, the private vulnerability-reporting channel,
-and release image coordinates must be replaced with their real public values
-before tagging the candidate.
+The repository URL and private vulnerability-reporting channel must point to
+the live public project before tagging the candidate. Release image coordinates
+remain optional until automated container publication is introduced.

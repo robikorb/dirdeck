@@ -19,6 +19,7 @@ after the first stable release.
 - Favorites, recent folders, persistent pane state, and keyboard shortcuts.
 - Guided Docker setup, persistent state volume, backup, and update scripts.
 - amd64 and arm64-compatible source build.
+- Original SVG wordmark, app icon, favicon, and in-app brand treatment.
 
 ### Security
 

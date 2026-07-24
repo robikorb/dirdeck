@@ -8,8 +8,8 @@ supported.
 ## Reporting a vulnerability
 
 Do not open a public issue containing exploit details, credentials, private
-paths, or screenshots of personal storage. Use the repository owner's private
-security-reporting channel once the public repository enables it.
+paths, or screenshots of personal storage. Submit a private report through
+[GitHub Security Advisories](https://github.com/robikorb/liquid-glass-file-manager/security/advisories/new).
 
 Include the affected version, deployment platform, reproduction steps using
 disposable files, impact, and any suggested mitigation. Do not test against

@@ -1,4 +1,11 @@
+<p align="center">
+  <img src="frontend/public/logo.svg" alt="Liquid Glass File Manager" width="720">
+</p>
+
 # Liquid Glass File Manager
+
+[![CI](https://github.com/robikorb/liquid-glass-file-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/robikorb/liquid-glass-file-manager/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-66bfff.svg)](LICENSE)
 
 Docker-first dual-pane file manager with a dark smoked-glass interface. Mount
 only the folders and disks you want the application to see, then browse, copy,
@@ -29,7 +36,7 @@ in SQLite inside a persistent Docker volume.
 Requirements: Docker Engine or Docker Desktop and Docker Compose v2.
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/robikorb/liquid-glass-file-manager.git
 cd liquid-glass-file-manager
 ./setup.sh
 ```

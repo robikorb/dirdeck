@@ -1,5 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
-  <title id="title">Liquid Glass File Manager</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Liquid Glass File Manager app icon</title>
+  <desc id="desc">Two glass folders connected by bidirectional transfer arrows.</desc>
   <defs>
     <linearGradient id="bg" x1="28" y1="20" x2="228" y2="236" gradientUnits="userSpaceOnUse">
       <stop stop-color="#17233f"/>

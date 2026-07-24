@@ -7,8 +7,8 @@ The release candidate must be installable without unpublished local knowledge.
 1. Run the complete backend and frontend test suite.
 2. Scan tracked files for credentials, private host paths, databases, and
    mounted user content.
-3. Publish a clearly marked `v0.1.0-rc1` release candidate only after explicit
-   approval.
+3. Publish a clearly marked semantic prerelease such as `v0.1.0-rc.2` only
+   after explicit approval.
 4. Use a clean host directory that has never contained this project.
 5. Clone only the public repository.
 6. Follow the public README without copying local files from a development

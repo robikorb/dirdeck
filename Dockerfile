@@ -22,8 +22,8 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates wget libsqlite3-0 gosu \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd --gid 1000 lgfm \
-  && useradd --uid 1000 --gid 1000 --home-dir /var/lib/file-manager --create-home lgfm \
-  && mkdir -p /etc/liquid-glass-file-manager /mnt/volumes \
+  && useradd --uid 1000 --gid 1000 --home-dir /var/lib/file-manager --no-create-home lgfm \
+  && mkdir -p /var/lib/file-manager /etc/liquid-glass-file-manager /mnt/volumes \
   && chown -R lgfm:lgfm /var/lib/file-manager
 
 COPY --from=backend /out/lgfm /usr/local/bin/lgfm

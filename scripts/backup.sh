@@ -32,12 +32,14 @@ restart_app() {
 trap restart_app EXIT INT TERM
 
 docker run --rm \
+  -e LANG=C \
+  -e LC_ALL=C \
   -v "$state_volume:/state:ro" \
   -v "$project_dir/backups:/backup" \
   alpine:3.22 \
   tar -czf "/backup/$(basename "$state_archive")" -C /state .
 
-tar -czf "$config_archive" \
+LC_ALL=C tar -czf "$config_archive" \
   .env \
   compose.override.yml \
   config/volumes.yaml \

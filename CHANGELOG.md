@@ -16,6 +16,8 @@ after the first stable release.
   action, and range selection no longer selects browser text.
 - Grid cards now use wider responsive columns, consistent card heights, and
   clamped long names instead of narrow columns with excessive wrapping.
+- File and folder context menus expose open/edit, copy, move, copy-path,
+  rename, and permanent-delete actions with permission-aware disabled states.
 
 ## 0.1.0-rc.2 - 2026-07-24
 

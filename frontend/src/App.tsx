@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ArrowLeftRight,
   CheckSquare2,
@@ -210,6 +211,15 @@ function Pane({
   onSelectMeta,
   onOpenFile,
   onActivate,
+  otherPaneName,
+  canCopySelection,
+  canMoveSelection,
+  canRenameSelection,
+  canDeleteSelection,
+  onCopySelection,
+  onMoveSelection,
+  onRenameSelection,
+  onDeleteSelection,
 }: {
   label: string
   paneId: ActivePane
@@ -220,7 +230,21 @@ function Pane({
   onSelectMeta: (volumeId: string, path: string, entry: DirEntry | null) => void
   onOpenFile: (volumeId: string, path: string, entry: DirEntry) => void
   onActivate: () => void
+  otherPaneName: string
+  canCopySelection: boolean
+  canMoveSelection: boolean
+  canRenameSelection: boolean
+  canDeleteSelection: boolean
+  onCopySelection: () => void
+  onMoveSelection: () => void
+  onRenameSelection: () => void
+  onDeleteSelection: () => void
 }) {
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    entry: DirEntry
+  } | null>(null)
   const volume = volumes.find((v) => v.id === state.volumeId)
   const thumbsOn = Boolean(volume?.thumbnails && volume.available)
   const crumbs = useMemo(() => {
@@ -279,6 +303,26 @@ function Pane({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.volumeId, state.path, state.reloadToken])
 
+  useEffect(() => {
+    if (!contextMenu) return
+    const close = () => setContextMenu(null)
+    const closeOnKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close()
+    }
+    document.addEventListener('mousedown', close)
+    window.addEventListener('blur', close)
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', close, true)
+    document.addEventListener('keydown', closeOnKey)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      window.removeEventListener('blur', close)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', close, true)
+      document.removeEventListener('keydown', closeOnKey)
+    }
+  }, [contextMenu])
+
   function selectEntry(entry: DirEntry, event?: React.MouseEvent) {
     const toggle = Boolean(event?.metaKey || event?.ctrlKey)
     const extend = Boolean(event?.shiftKey)
@@ -334,6 +378,43 @@ function Pane({
     event.preventDefault()
     event.stopPropagation()
     onOpenFile(state.volumeId, entry.path, entry)
+  }
+
+  function openContextMenu(entry: DirEntry, event: React.MouseEvent) {
+    event.preventDefault()
+    onActivate()
+    if (!state.selectedPaths.includes(entry.path)) selectEntry(entry)
+    const menuWidth = 240
+    const menuHeight = 300
+    setContextMenu({
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8)),
+      entry,
+    })
+  }
+
+  function runContextAction(action: () => void) {
+    setContextMenu(null)
+    action()
+  }
+
+  function copyRelativePath(entry: DirEntry) {
+    const text = entry.path
+    const fallback = () => {
+      const field = document.createElement('textarea')
+      field.value = text
+      field.style.position = 'fixed'
+      field.style.opacity = '0'
+      document.body.appendChild(field)
+      field.select()
+      document.execCommand('copy')
+      field.remove()
+    }
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(text).catch(fallback)
+    } else {
+      fallback()
+    }
   }
 
   const selectedEntries = state.entries.filter((entry) => state.selectedPaths.includes(entry.path))
@@ -468,6 +549,7 @@ function Pane({
                   tabIndex={0}
                   aria-selected={state.selectedPaths.includes(entry.path)}
                   onClick={(event) => handleEntryClick(entry, event)}
+                  onContextMenu={(event) => openContextMenu(entry, event)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && entry.isDir) {
                       event.preventDefault()
@@ -512,6 +594,7 @@ function Pane({
                 tabIndex={0}
                 aria-pressed={state.selectedPaths.includes(entry.path)}
                 onClick={(event) => handleEntryClick(entry, event)}
+                onContextMenu={(event) => openContextMenu(entry, event)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && entry.isDir) {
                     event.preventDefault()
@@ -549,6 +632,88 @@ function Pane({
         </span>
         <span>{selectedEntries.length > 0 && selectedBytes > 0 ? formatSize(selectedBytes) : ''}</span>
       </div>
+      {contextMenu ? createPortal(
+        <div
+          className="entry-context-menu"
+          role="menu"
+          aria-label={`Actions for ${contextMenu.entry.name}`}
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onMouseDown={(event) => event.stopPropagation()}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          <div className="context-menu-title" title={contextMenu.entry.name}>
+            {contextMenu.entry.name}
+          </div>
+          {contextMenu.entry.isDir ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => runContextAction(() => activateEntry(contextMenu.entry))}
+            >
+              <Folder size={15} />
+              Open folder
+            </button>
+          ) : null}
+          {!contextMenu.entry.isDir && isEditablePath(contextMenu.entry.path) ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => runContextAction(() =>
+                onOpenFile(state.volumeId, contextMenu.entry.path, contextMenu.entry))}
+            >
+              <Pencil size={15} />
+              Open in editor
+            </button>
+          ) : null}
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!canCopySelection}
+            onClick={() => runContextAction(onCopySelection)}
+          >
+            <ChevronRight size={15} />
+            Copy to {otherPaneName}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!canMoveSelection}
+            onClick={() => runContextAction(onMoveSelection)}
+          >
+            <ArrowLeftRight size={15} />
+            Move to {otherPaneName}
+          </button>
+          <div className="context-menu-separator" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => runContextAction(() => copyRelativePath(contextMenu.entry))}
+          >
+            <Link2 size={15} />
+            Copy relative path
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!canRenameSelection}
+            onClick={() => runContextAction(onRenameSelection)}
+          >
+            <Pencil size={15} />
+            Rename
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="context-menu-danger"
+            disabled={!canDeleteSelection}
+            onClick={() => runContextAction(onDeleteSelection)}
+          >
+            <Trash2 size={15} />
+            Delete permanently
+          </button>
+        </div>,
+        document.body,
+      ) : null}
     </section>
   )
 }
@@ -1526,6 +1691,15 @@ export default function App() {
         onSelectMeta={onSelectMeta}
         onOpenFile={(volumeId, path, entry) => void openEditor(volumeId, path, entry)}
         onActivate={() => setActivePane('left')}
+        otherPaneName={rightVol?.name ?? 'right pane'}
+        canCopySelection={canCopyRight}
+        canMoveSelection={canMoveRight}
+        canRenameSelection={canRename}
+        canDeleteSelection={canDelete}
+        onCopySelection={() => void copySelection('ltr')}
+        onMoveSelection={() => void moveSelection('ltr')}
+        onRenameSelection={openRename}
+        onDeleteSelection={openDelete}
       />
 
       <div className="glass transfer-strip" aria-label="Transfer controls">
@@ -1606,6 +1780,15 @@ export default function App() {
         onSelectMeta={onSelectMeta}
         onOpenFile={(volumeId, path, entry) => void openEditor(volumeId, path, entry)}
         onActivate={() => setActivePane('right')}
+        otherPaneName={leftVol?.name ?? 'left pane'}
+        canCopySelection={canCopyLeft}
+        canMoveSelection={canMoveLeft}
+        canRenameSelection={canRename}
+        canDeleteSelection={canDelete}
+        onCopySelection={() => void copySelection('rtl')}
+        onMoveSelection={() => void moveSelection('rtl')}
+        onRenameSelection={openRename}
+        onDeleteSelection={openDelete}
       />
 
       {inspectorOpen ? (

@@ -108,7 +108,7 @@ const emptyPane = (): PaneState => ({
 })
 
 function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
-  const [username, setUsername] = useState('admin')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

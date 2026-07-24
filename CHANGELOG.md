@@ -3,6 +3,13 @@
 All notable changes are recorded here. The project follows semantic versioning
 after the first stable release.
 
+## Unreleased
+
+### Fixed
+
+- The login form no longer assumes that every installation uses `admin` as its
+  administrator username.
+
 ## 0.1.0-rc.2 - 2026-07-24
 
 ### Added

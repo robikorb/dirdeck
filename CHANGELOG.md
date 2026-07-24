@@ -12,6 +12,10 @@ after the first stable release.
 - Folder listings now refresh when the browser regains focus, every 30 seconds
   while visible, from a per-pane refresh button, or by clicking the active
   volume again.
+- Folders open with one unmodified click, editable files use an explicit pencil
+  action, and range selection no longer selects browser text.
+- Grid cards now use wider responsive columns, consistent card heights, and
+  clamped long names instead of narrow columns with excessive wrapping.
 
 ## 0.1.0-rc.2 - 2026-07-24
 

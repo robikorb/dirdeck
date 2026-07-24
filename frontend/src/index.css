@@ -260,6 +260,8 @@ input:focus-visible,
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .list-table th {
@@ -290,20 +292,62 @@ input:focus-visible,
   background: var(--bg-selected);
 }
 
+.entry-action-heading,
+.entry-action-cell {
+  width: 42px;
+  text-align: right;
+}
+
+.entry-edit-button {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.list-table tr:hover .entry-edit-button,
+.list-table tr.selected .entry-edit-button,
+.entry-edit-button:focus-visible {
+  opacity: 1;
+}
+
+.entry-edit-button:hover,
+.entry-edit-button:focus-visible {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  align-content: start;
+  gap: 14px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .grid-item {
+  position: relative;
+  min-width: 0;
+  min-height: 132px;
   border: 1px solid transparent;
   border-radius: 12px;
-  padding: 10px 8px;
+  padding: 14px 12px 12px;
   text-align: center;
   cursor: pointer;
   background: transparent;
   color: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .grid-item:hover {
@@ -313,6 +357,18 @@ input:focus-visible,
 .grid-item.selected {
   border-color: var(--accent);
   background: var(--bg-selected);
+}
+
+.grid-edit-button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+.grid-item:hover .grid-edit-button,
+.grid-item.selected .grid-edit-button,
+.grid-edit-button:focus-visible {
+  opacity: 1;
 }
 
 .grid-icon {
@@ -327,8 +383,15 @@ input:focus-visible,
 }
 
 .grid-name {
+  width: 100%;
   font-size: 12px;
+  line-height: 1.35;
   word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .pane-footer {

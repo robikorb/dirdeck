@@ -310,17 +310,29 @@ function Pane({
   }
 
   function activateEntry(entry: DirEntry) {
-    if (entry.isDir) {
-      onChange({
-        ...state,
-        path: entry.path,
-        selected: null,
-        selectedPaths: [],
-        selectionAnchor: null,
-      })
-      onSelectMeta(state.volumeId, entry.path, null)
+    if (!entry.isDir) return
+    onChange({
+      ...state,
+      path: entry.path,
+      selected: null,
+      selectedPaths: [],
+      selectionAnchor: null,
+    })
+    onSelectMeta(state.volumeId, entry.path, null)
+  }
+
+  function handleEntryClick(entry: DirEntry, event: React.MouseEvent) {
+    const modifiedSelection = event.metaKey || event.ctrlKey || event.shiftKey
+    if (entry.isDir && !modifiedSelection) {
+      activateEntry(entry)
       return
     }
+    selectEntry(entry, event)
+  }
+
+  function editEntry(entry: DirEntry, event: React.MouseEvent | React.KeyboardEvent) {
+    event.preventDefault()
+    event.stopPropagation()
     onOpenFile(state.volumeId, entry.path, entry)
   }
 
@@ -445,6 +457,7 @@ function Pane({
                 <th>Name</th>
                 <th>Date modified</th>
                 <th>Size</th>
+                <th className="entry-action-heading" aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
@@ -454,10 +467,9 @@ function Pane({
                   className={state.selectedPaths.includes(entry.path) ? 'selected' : ''}
                   tabIndex={0}
                   aria-selected={state.selectedPaths.includes(entry.path)}
-                  onClick={(event) => selectEntry(entry, event)}
-                  onDoubleClick={() => activateEntry(entry)}
+                  onClick={(event) => handleEntryClick(entry, event)}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
+                    if (event.key === 'Enter' && entry.isDir) {
                       event.preventDefault()
                       activateEntry(entry)
                     }
@@ -471,6 +483,20 @@ function Pane({
                   </td>
                   <td>{formatDate(entry.modTime)}</td>
                   <td>{entry.isDir ? '—' : formatSize(entry.size)}</td>
+                  <td className="entry-action-cell">
+                    {!entry.isDir && isEditablePath(entry.path) ? (
+                      <button
+                        type="button"
+                        className="entry-edit-button"
+                        aria-label={`Edit ${entry.name}`}
+                        title="Open in editor"
+                        onClick={(event) => editEntry(entry, event)}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -479,17 +505,38 @@ function Pane({
         {!state.loading && !state.error && state.view === 'grid' ? (
           <div className="grid">
             {state.entries.map((entry) => (
-              <button
-                type="button"
+              <div
                 key={entry.path}
                 className={`grid-item ${state.selectedPaths.includes(entry.path) ? 'selected' : ''}`}
+                role="button"
+                tabIndex={0}
                 aria-pressed={state.selectedPaths.includes(entry.path)}
-                onClick={(event) => selectEntry(entry, event)}
-                onDoubleClick={() => activateEntry(entry)}
+                onClick={(event) => handleEntryClick(entry, event)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && entry.isDir) {
+                    event.preventDefault()
+                    activateEntry(entry)
+                  } else if (event.key === ' ' && !entry.isDir) {
+                    event.preventDefault()
+                    selectEntry(entry)
+                  }
+                }}
               >
                 <Thumb volumeId={state.volumeId} entry={entry} enabled={thumbsOn} />
-                <div className="grid-name">{entry.name}</div>
-              </button>
+                <div className="grid-name" title={entry.name}>{entry.name}</div>
+                {!entry.isDir && isEditablePath(entry.path) ? (
+                  <button
+                    type="button"
+                    className="entry-edit-button grid-edit-button"
+                    aria-label={`Edit ${entry.name}`}
+                    title="Open in editor"
+                    onClick={(event) => editEntry(entry, event)}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                ) : null}
+              </div>
             ))}
           </div>
         ) : null}
@@ -1214,8 +1261,6 @@ export default function App() {
             selectedPaths: [],
             selectionAnchor: null,
           })
-        } else if (entry) {
-          void openEditor(pane.volumeId, entry.path, entry)
         }
         return
       }

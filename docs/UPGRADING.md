@@ -26,12 +26,13 @@ The script:
 2. archives the named application state volume;
 3. separately archives `.env`, the Compose override, volume registry, and
    credentials;
-4. restarts the service if it was running.
+4. prunes old archive pairs according to `LGFM_BACKUP_RETENTION` (default 10);
+5. restarts the service if it was running.
 
 Archives are written to `backups/` with UTC timestamps and are explicitly set
 to mode `0600`. The configuration archive contains the administrator bootstrap
 secret and must be protected like a password. The state archive contains
-sessions and must receive the same protection.
+session digests and must receive the same protection.
 
 The script does not back up mounted user storage. Use the storage owner's
 normal backup solution for those disks and shares.
@@ -49,6 +50,10 @@ readiness endpoint.
 The backend applies additive, forward-only SQLite migrations during startup.
 Migration 4 adds persisted batch source paths while retaining all existing
 jobs and preferences.
+
+The security-hardening update that introduced hashed session tokens invalidates
+cookies created by older builds once; sign in again after the update. Settings,
+users, transfer history, and mounted files are preserved.
 
 Never use:
 

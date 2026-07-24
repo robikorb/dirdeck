@@ -15,12 +15,14 @@ a valid session except health/ready.
 
 ## Sessions
 
-- Opaque random session ID in an HTTP-only cookie: `lgfm_session`
+- Opaque random session ID in an HTTP-only cookie: `lgfm_session`; SQLite stores
+  only its SHA-256 digest
 - `SameSite=Strict`; `Secure` when `LGFM_SECURE_COOKIE=true`
 - CSRF token stored server-side with the session and returned to the client
   after login / session check
 - Session rotation: previous cookie session is revoked on successful login
-- Default TTL: 12 hours (configurable in code via auth constructor)
+- Expired and revoked sessions are pruned at startup
+- Default TTL: 12 hours (`LGFM_SESSION_TTL_HOURS`)
 
 ## Endpoints
 
@@ -30,7 +32,9 @@ a valid session except health/ready.
 | `POST` | `/api/auth/logout` | Yes | Yes | Revokes session |
 | `GET` | `/api/auth/session` | Cookie optional | No | `{ authenticated, username?, csrfToken?, expiresAt? }` |
 
-Failed logins are rate-limited per client IP (default: 10 failures / 60s).
+Failed logins are rate-limited per client IP. Defaults are 10 failures per 60
+seconds and can be adjusted with `LGFM_LOGIN_RATE_LIMIT_MAX` and
+`LGFM_LOGIN_RATE_LIMIT_SEC`.
 
 ## CSRF rules
 

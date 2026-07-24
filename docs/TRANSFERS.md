@@ -38,11 +38,16 @@ Job `kind` is `copy` or `move`.
 - A request supplies either legacy `sourcePath` or `sourcePaths`.
 - Every source belongs to the same configured source volume and every item is
   copied or moved into the same destination directory.
-- The backend deduplicates the selection and validates all paths, symlinks,
-  destination relationships, permissions, planned bytes, and free space before
-  creating the durable job.
+- The backend deduplicates the selection and validates top-level paths,
+  symlinks, destination relationships, and permissions before creating the
+  durable job. Recursive planning runs in the worker so a large NAS tree does
+  not block the HTTP request.
 - A batch contains at most 500 top-level selections. Directories contribute
   their recursively planned files and bytes to aggregate totals.
+- Recursive planning and copying use a transfer-only listing path. It includes
+  dotfiles, ignores the UI's `showHiddenFiles` preference and 10,000-entry
+  display cap, and fails instead of silently skipping an entry that cannot be
+  inspected.
 - Items run serially in selection order. This prevents a large browser
   selection from creating hundreds of simultaneous disk operations.
 - `sourcePath` remains the first item for compatibility. `sourcePaths` is the
@@ -102,9 +107,10 @@ cannot provide a reliable value (common on some NAS mounts), free space is
 reported as **unknown**. Unknown free space must **not** fail the job and must
 **not** be treated as “sufficient space proven.”
 
-When free space is known, copy jobs whose planned byte total exceeds it are
-rejected before the durable job is created. Move jobs still report the value
-because same-filesystem atomic rename may not require a second full copy.
+When free space is known, the background planning phase fails a copy or
+cross-volume move before writing when the planned byte total exceeds it.
+Same-volume moves may use an atomic rename and do not require a second full
+copy.
 
 ## Self-target protection
 
@@ -138,16 +144,18 @@ Automated tests use **temporary disposable directories**, not real user storage.
 The Compose example mounts `fixtures/ro` and `fixtures/rw` for manual demos only.
 Do not configure CI or unit tests against production host paths.
 
-Tests cover aggregate batch copy, aggregate batch move, batch apply-to-all
-conflicts, the 500-item API shape, same-filesystem rename, cross-filesystem
-fallback (including forced `EXDEV`), failure injection at every move stage,
-source-delete partial failure, and restart reconcile.
+Tests cover aggregate batch copy, aggregate batch move, hidden files,
+display-limit independence, batch apply-to-all conflicts, the 500-item API
+shape, same-filesystem rename, cross-filesystem fallback (including forced
+`EXDEV`), failure injection at every move stage, source-delete partial failure,
+and restart reconcile.
 
 ## Progress events
 
 The worker updates `bytesDone`, `bytesTotal`, `bytesPerSecond`,
 `bytesRemaining`, `filesDone` / `filesTotal`, and `currentPath`. Updates are
-persisted and broadcast over SSE (`GET /api/transfers/events`). Clients that
+batched to SQLite on a 200 ms window and broadcast over SSE
+(`GET /api/transfers/events`). Clients that
 reconnect must fetch job state from the REST API so they never rely on missed
 events alone.
 

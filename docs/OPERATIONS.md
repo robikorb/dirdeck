@@ -44,6 +44,11 @@ when more exist). Hidden files still follow the volume `showHiddenFiles`
 policy. The UI shows a truncation notice. Operators should organize deep trees
 or browse into subfolders rather than relying on an unbounded listing.
 
+This browser-only cap never applies to copy or move jobs. Transfers enumerate
+the complete source tree, including dotfiles, before writing. Planning is
+performed asynchronously after the durable job is created, so large trees can
+remain in `queued` state while totals and free-space requirements are computed.
+
 ## Slow NAS mounts
 
 List, stat, preview, and thumbnail calls share the safe path resolver. Slow I/O
@@ -57,6 +62,11 @@ decodes fail closed (`413` / `504` / `429`) instead of starving the process.
 Browser refresh does **not** cancel server-side copy/move jobs. The UI
 re-subscribes to SSE and refreshes `GET /api/transfers` on reconnect. See
 [TRANSFERS.md](TRANSFERS.md).
+
+During a controlled container stop, the server cancels active workers, waits
+for their durable status/partial cleanup, and then exits within the configured
+Docker shutdown window. Startup reconciliation remains the fallback after a
+host crash or forced termination.
 
 ## Fixtures in the default stack
 

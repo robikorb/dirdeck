@@ -4,21 +4,22 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
 // Config holds process configuration loaded from the environment.
 type Config struct {
-	ListenAddr         string
-	DataDir            string
-	VolumesFile        string
-	AdminUsernameFile  string
-	AdminPasswordFile  string
-	SecureCookie       bool
-	StaticDir          string
-	LoginRateLimitMax  int
-	LoginRateLimitSec  int
-	SessionTTLHours    int
+	ListenAddr        string
+	DataDir           string
+	VolumesFile       string
+	AdminUsernameFile string
+	AdminPasswordFile string
+	SecureCookie      bool
+	StaticDir         string
+	LoginRateLimitMax int
+	LoginRateLimitSec int
+	SessionTTLHours   int
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -31,14 +32,22 @@ func Load() (Config, error) {
 		AdminPasswordFile: envOr("LGFM_ADMIN_PASSWORD_FILE", "./secrets/admin_password"),
 		SecureCookie:      envOr("LGFM_SECURE_COOKIE", "false") == "true",
 		StaticDir:         envOr("LGFM_STATIC_DIR", ""),
-		LoginRateLimitMax: 10,
-		LoginRateLimitSec: 60,
-		SessionTTLHours:   12,
+		LoginRateLimitMax: envIntOr("LGFM_LOGIN_RATE_LIMIT_MAX", 10),
+		LoginRateLimitSec: envIntOr("LGFM_LOGIN_RATE_LIMIT_SEC", 60),
+		SessionTTLHours:   envIntOr("LGFM_SESSION_TTL_HOURS", 12),
 	}
 	if err := os.MkdirAll(cfg.DataDir, 0o750); err != nil {
 		return Config{}, fmt.Errorf("create data dir: %w", err)
 	}
 	return cfg, nil
+}
+
+func envIntOr(key string, fallback int) int {
+	value, err := strconv.Atoi(strings.TrimSpace(os.Getenv(key)))
+	if err != nil || value <= 0 {
+		return fallback
+	}
+	return value
 }
 
 func envOr(key, fallback string) string {

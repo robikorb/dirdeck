@@ -17,6 +17,8 @@ The release candidate must be installable without unpublished local knowledge.
 8. Verify login, health, ready, and persistence after restart.
 9. Confirm `compose.override.yml`, `config/volumes.yaml`, `.env`, and secrets
    remain untracked and unchanged after a pull/rebuild.
+10. Confirm Compose binds to `127.0.0.1` by default and that LAN access appears
+    only after explicitly setting `LGFM_BIND_ADDR=0.0.0.0`.
 
 Any undocumented command, copied local config, or developer-only assumption is
 a release defect and must be fixed before retesting.
@@ -27,14 +29,17 @@ a release defect and must be fixed before retesting.
 2. Test single and multiple selection.
 3. Test batch copy, move, conflict apply-to-all, cancel, rename, editor save,
    and batch delete using fixture files only.
-4. Add real host storage as Docker read-only mounts and registry read-only
+4. Copy and cross-filesystem-move a fixture tree containing dotfiles and more
+   entries than a deliberately lowered display-list limit; verify every source
+   reaches the destination before the move source disappears.
+5. Add real host storage as Docker read-only mounts and registry read-only
    volumes.
-5. Verify browsing, preview, read-only editor mode, hidden-file policy, and
+6. Verify browsing, preview, read-only editor mode, hidden-file policy, and
    unavailable-mount behavior.
-6. Create a dedicated disposable write-test directory.
-7. Enable write access only for that directory.
-8. Test copy, move, rename, editor save, and deletion with generated test files.
-9. Enable write access for a real volume only after explicit approval.
+7. Create a dedicated disposable write-test directory.
+8. Enable write access only for that directory.
+9. Test copy, move, rename, editor save, and deletion with generated test files.
+10. Enable write access for a real volume only after explicit approval.
 
 ## Upgrade validation
 
@@ -42,6 +47,8 @@ a release defect and must be fixed before retesting.
 2. Run `./scripts/backup.sh`.
 3. Update to the next candidate with `./scripts/update.sh`.
 4. Confirm login, preferences, volume registry, history, and files remain.
+   A one-time login is expected when upgrading from plaintext session storage
+   to session-token digests.
 5. Confirm the database schema migration version.
 6. Exercise the documented rollback on disposable state, never on the primary
    installation first.

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"database/sql"
 	"encoding/base64"
@@ -159,6 +160,21 @@ func randomToken(n int) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
+func sessionTokenHash(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// PruneSessions removes expired and revoked credentials from durable state.
+func (s *Service) PruneSessions() error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := s.db.Exec(
+		`DELETE FROM sessions WHERE expires_at <= ? OR revoked_at IS NOT NULL`,
+		now,
+	)
+	return err
+}
+
 // Login authenticates and creates a new session (rotating any prior cookie).
 func (s *Service) Login(w http.ResponseWriter, r *http.Request, username, password string) (*Session, error) {
 	ip := clientIP(r)
@@ -171,7 +187,9 @@ func (s *Service) Login(w http.ResponseWriter, r *http.Request, username, passwo
 		user string
 	)
 	err := s.db.QueryRow(`SELECT id, username, password_hash FROM users WHERE id = 1`).Scan(&id, &user, &hash)
-	if err != nil || subtle.ConstantTimeCompare([]byte(user), []byte(username)) != 1 || !verifyPassword(hash, password) {
+	passwordOK := verifyPassword(hash, password)
+	usernameOK := subtle.ConstantTimeCompare([]byte(user), []byte(username)) == 1
+	if err != nil || !usernameOK || !passwordOK {
 		s.recordFailure(ip)
 		return nil, ErrInvalidCredentials
 	}
@@ -188,14 +206,14 @@ func (s *Service) Login(w http.ResponseWriter, r *http.Request, username, passwo
 	expires := time.Now().UTC().Add(s.sessionTTL)
 	_, err = s.db.Exec(
 		`INSERT INTO sessions(id, user_id, csrf_token, expires_at) VALUES (?, ?, ?, ?)`,
-		sessionID, id, csrf, expires.Format(time.RFC3339),
+		sessionTokenHash(sessionID), id, csrf, expires.Format(time.RFC3339),
 	)
 	if err != nil {
 		return nil, err
 	}
 	// Revoke any previous session from cookie (rotation).
 	if old, err := r.Cookie(sessionCookieName); err == nil && old.Value != "" {
-		_, _ = s.db.Exec(`UPDATE sessions SET revoked_at = datetime('now') WHERE id = ?`, old.Value)
+		_, _ = s.db.Exec(`UPDATE sessions SET revoked_at = datetime('now') WHERE id = ?`, sessionTokenHash(old.Value))
 	}
 	s.setSessionCookie(w, sessionID, expires)
 	return &Session{ID: sessionID, UserID: id, Username: user, CSRFToken: csrf, ExpiresAt: expires}, nil
@@ -204,7 +222,7 @@ func (s *Service) Login(w http.ResponseWriter, r *http.Request, username, passwo
 // Logout revokes the current session.
 func (s *Service) Logout(w http.ResponseWriter, r *http.Request) error {
 	if c, err := r.Cookie(sessionCookieName); err == nil && c.Value != "" {
-		_, _ = s.db.Exec(`UPDATE sessions SET revoked_at = datetime('now') WHERE id = ?`, c.Value)
+		_, _ = s.db.Exec(`UPDATE sessions SET revoked_at = datetime('now') WHERE id = ?`, sessionTokenHash(c.Value))
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
@@ -231,7 +249,7 @@ func (s *Service) SessionFromRequest(r *http.Request) (*Session, error) {
 		FROM sessions s
 		JOIN users u ON u.id = s.user_id
 		WHERE s.id = ? AND s.revoked_at IS NULL
-	`, c.Value).Scan(&sess.ID, &sess.UserID, &sess.Username, &sess.CSRFToken, &expires)
+	`, sessionTokenHash(c.Value)).Scan(&sess.ID, &sess.UserID, &sess.Username, &sess.CSRFToken, &expires)
 	if err != nil {
 		return nil, ErrUnauthorized
 	}

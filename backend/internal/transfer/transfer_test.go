@@ -114,6 +114,53 @@ func TestCrossVolumeCopy(t *testing.T) {
 	}
 }
 
+func TestDirectoryCopyIncludesHiddenFilesAndIgnoresDisplayLimit(t *testing.T) {
+	ro, rw, _, mgr, _ := setupVolumes(t)
+	source := filepath.Join(ro, "project")
+	if err := os.MkdirAll(filepath.Join(source, ".git", "objects"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		".env":                  "secret-setting",
+		".git/HEAD":             "ref: refs/heads/main",
+		".git/objects/object-1": "object",
+		"visible-a.txt":         "a",
+		"visible-b.txt":         "b",
+		"visible-c.txt":         "c",
+	}
+	for rel, content := range files {
+		if err := os.WriteFile(filepath.Join(source, rel), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	previousLimit := appfs.MaxListEntries
+	appfs.MaxListEntries = 2
+	t.Cleanup(func() { appfs.MaxListEntries = previousLimit })
+
+	job, err := mgr.Create(transfer.CreateRequest{
+		Kind:           transfer.KindCopy,
+		SourceVolumeID: "fixture-ro",
+		SourcePath:     "project",
+		DestVolumeID:   "fixture-rw",
+		DestDir:        "",
+		ConflictPolicy: transfer.PolicyReplace,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := waitStatus(t, mgr, job.ID, transfer.StatusCompleted)
+	if done.FilesTotal != int64(len(files)) || done.FilesDone != int64(len(files)) {
+		t.Fatalf("unexpected progress: %+v", done)
+	}
+	for rel, want := range files {
+		got, err := os.ReadFile(filepath.Join(rw, "project", rel))
+		if err != nil || string(got) != want {
+			t.Fatalf("copied %s: err=%v got=%q", rel, err, got)
+		}
+	}
+}
+
 func TestBatchCopyAggregatesProgress(t *testing.T) {
 	_, rw, _, mgr, _ := setupVolumes(t)
 	job, err := mgr.Create(transfer.CreateRequest{

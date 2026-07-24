@@ -37,7 +37,8 @@ docker run --rm \
   -v "$state_volume:/state:ro" \
   -v "$project_dir/backups:/backup" \
   alpine:3.22 \
-  tar -czf "/backup/$(basename "$state_archive")" -C /state .
+  sh -c 'tar -czf "$1" -C /state . && chmod 600 "$1"' sh \
+  "/backup/$(basename "$state_archive")"
 
 LC_ALL=C tar -czf "$config_archive" \
   .env \
@@ -45,7 +46,21 @@ LC_ALL=C tar -czf "$config_archive" \
   config/volumes.yaml \
   secrets/admin_username \
   secrets/admin_password
-chmod 600 "$state_archive" "$config_archive"
+chmod 600 "$config_archive"
+
+retention=$(sed -n 's/^LGFM_BACKUP_RETENTION=//p' .env 2>/dev/null | tail -n 1)
+retention=${retention:-10}
+case "$retention" in
+  ''|*[!0-9]*) retention=10 ;;
+esac
+if [ "$retention" -gt 0 ]; then
+  ls -1t "$project_dir"/backups/lgfm-state-*.tar.gz 2>/dev/null |
+    awk -v keep="$retention" 'NR > keep' |
+    while IFS= read -r old_state; do
+      old_config=$(printf '%s\n' "$old_state" | sed 's#/lgfm-state-#/lgfm-config-#')
+      rm -f -- "$old_state" "$old_config"
+    done
+fi
 
 restart_app
 trap - EXIT INT TERM

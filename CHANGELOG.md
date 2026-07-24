@@ -5,6 +5,13 @@ after the first stable release.
 
 ## Unreleased
 
+### Added
+
+- Configurable login throttling, session lifetime, host bind address, and backup
+  retention through documented environment variables.
+- Graceful HTTP and transfer-worker shutdown for container restarts.
+- A restrictive same-origin Content Security Policy.
+
 ### Fixed
 
 - The login form no longer assumes that every installation uses `admin` as its
@@ -20,6 +27,31 @@ after the first stable release.
   rename, and permanent-delete actions with permission-aware disabled states.
 - Closing the Inspector now removes its responsive overlay completely instead
   of leaving an invisible layer that intercepted pane clicks.
+- Copy and move now traverse complete source trees, including dotfiles and
+  entries beyond the browser's display cap.
+- Cross-filesystem moves and replace-on-conflict cleanup now use the same
+  descriptor-based, symlink-safe and mount-boundary-safe deletion path as the
+  permanent-delete action.
+- Recursive transfer planning now runs in the background, applies free-space
+  checks before writing, batches durable progress updates, and responds to
+  cancellation around the final rename.
+- SQLite now enables foreign keys, a busy timeout, WAL journaling, and NORMAL
+  synchronous mode using the correct driver options.
+- Thumbnail requests retry transient saturation with bounded backoff, and list
+  and grid views virtualize large directories instead of mounting every entry
+  in the DOM.
+- Session cookie tokens are stored as SHA-256 digests, expired or revoked
+  sessions are pruned on startup, and invalid usernames follow the password
+  verification timing path.
+- Backups created by Linux containers retain private permissions and old
+  archive pairs are pruned according to the configured retention count.
+
+### Changed
+
+- Compose binds to localhost by default. LAN or VPN exposure now requires the
+  explicit `LGFM_BIND_ADDR=0.0.0.0` opt-in.
+- CI runs the Go race detector and starts the Compose stack to verify the ready
+  endpoint after a container build.
 
 ## 0.1.0-rc.2 - 2026-07-24
 

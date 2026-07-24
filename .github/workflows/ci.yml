@@ -19,7 +19,7 @@ jobs:
           cache-dependency-path: backend/go.sum
       - name: Test
         working-directory: backend
-        run: go test ./...
+        run: go test -race ./...
       - name: Vet
         working-directory: backend
         run: go vet ./...
@@ -58,3 +58,14 @@ jobs:
         run: docker compose config
       - name: Build container
         run: docker compose build
+      - name: Start and verify container
+        run: |
+          docker compose up -d
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3002/api/ready; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs file-manager
+          exit 1

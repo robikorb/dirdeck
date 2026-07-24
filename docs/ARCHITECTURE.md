@@ -76,6 +76,7 @@ authenticated before any filesystem metadata is returned.
 - Read the password from a Docker secret or file, not a command-line argument.
 - Hash the password with Argon2id before storing application state.
 - Use an opaque server-side session with a short-lived, HTTP-only cookie.
+- Store only a one-way digest of the browser session token in SQLite.
 - Set `SameSite=Strict`; set `Secure` whenever the public URL uses HTTPS.
 - Require CSRF protection and same-origin validation for every state-changing
   request.
@@ -114,6 +115,11 @@ refusal. All filesystem APIs use the same
 volume-ID and relative-path security model. See `API.md`, `TRANSFERS.md`,
 `KEYBOARD.md`, and `OPERATIONS.md`.
 
+Recursive transfer planning happens in the worker after the job is persisted,
+so a large or slow source tree does not hold the create request open. Transfer
+enumeration is intentionally separate from display listing: it includes
+dotfiles and is never capped by the browser's 10,000-entry safety limit.
+
 Thumbnail and preview endpoints process untrusted files with input-size,
 decoded-pixel, execution-time, and concurrency limits before returning bytes.
 
@@ -135,11 +141,13 @@ must not traverse them.
 ### Phase 1 (copy) — implemented
 
 - Persistent SQLite transfer-job state machine
+- SQLite WAL mode with bounded busy waits and batched durable progress writes
 - Destination-side staging (`.lgfm-partial-<job-id>`), verify, atomic rename
 - Progress, speed, remaining bytes, cancellation, conflict policies
 - Server-Sent Events with client reconnect + REST snapshot
 - Startup reconcile of interrupted jobs (never false success)
 - Recursive directory copy without symlink traversal
+- Complete source enumeration independent of display filters and listing caps
 - Best-effort free-space reporting (unknown must not fail or claim sufficiency)
 - Server-side rejection of writes to read-only volumes
 - One to 500 selected sources per durable job, serial processing, aggregate
@@ -197,6 +205,8 @@ suggest destructive or synchronization behavior that does not exist.
 
 Both panes must support list and grid modes independently. The inspector is
 collapsible and should default closed when horizontal space is limited.
+Both views virtualize their visible window with overscan so a 10,000-entry
+directory does not create 10,000 live rows or cards.
 
 ## Theme direction
 

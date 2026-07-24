@@ -21,6 +21,8 @@ in SQLite inside a persistent Docker volume.
 - Dual-pane list and grid browsing.
 - Multiple selection with Cmd/Ctrl+click, Shift+click, and Cmd/Ctrl+A.
 - Batch copy and move jobs with combined byte and file progress.
+- Complete transfer traversal that is independent of hidden-file display
+  preferences and UI listing limits.
 - Skip, replace, rename, and apply-to-all conflict handling.
 - Permanent batch deletion with an explicit confirmation dialog.
 - Safe single-item rename without overwriting an existing destination.
@@ -53,6 +55,10 @@ cd liquid-glass-file-manager
 The default interface is available at
 [http://127.0.0.1:3002](http://127.0.0.1:3002). Change `LGFM_PORT` in `.env`
 before startup if that port is already in use.
+
+The default bind address is `127.0.0.1`. For trusted LAN or VPN access, set
+`LGFM_BIND_ADDR=0.0.0.0` explicitly and protect the service with host firewall
+rules. Prefer an HTTPS reverse proxy and set `LGFM_SECURE_COOKIE=true`.
 
 The password is never baked into the image or committed to Git. On startup it
 is hashed with Argon2id before being stored in SQLite.
@@ -116,10 +122,13 @@ state volume. See [docs/UPGRADING.md](docs/UPGRADING.md).
 - Read-only capability is enforced by the backend for every mutation.
 - Copy and move jobs use unmistakable partial names and verify files before the
   final rename.
+- Transfers enumerate every source entry, including dotfiles, and never inherit
+  the browser's hidden-file filter or 10,000-item display cap.
 - Batch jobs run serially instead of starting hundreds of concurrent copies.
 - The volume root can never be deleted.
-- Recursive deletion never follows symlinks and refuses nested filesystem
-  boundaries.
+- Every recursive deletion path, including conflict replacement and
+  cross-filesystem move cleanup, never follows symlinks and refuses nested
+  filesystem boundaries.
 - Editor writes are size limited, conflict checked, and atomically replaced.
 
 This application exposes whatever storage the operator mounts. Do not mount the

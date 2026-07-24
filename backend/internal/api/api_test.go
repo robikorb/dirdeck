@@ -75,6 +75,9 @@ volumes:
 	if rr.Code != 200 {
 		t.Fatalf("health: %d", rr.Code)
 	}
+	if got := rr.Header().Get("Content-Security-Policy"); !strings.Contains(got, "default-src 'self'") {
+		t.Fatalf("missing restrictive content security policy: %q", got)
+	}
 
 	// Volumes require auth
 	rr = httptest.NewRecorder()

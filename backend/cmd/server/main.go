@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/liquid-glass-file-manager/backend/internal/api"
@@ -47,6 +50,9 @@ func main() {
 	if err := authSvc.BootstrapAdmin(username, password); err != nil {
 		log.Fatalf("bootstrap admin: %v", err)
 	}
+	if err := authSvc.PruneSessions(); err != nil {
+		log.Fatalf("prune sessions: %v", err)
+	}
 
 	reg, err := volumes.Load(cfg.VolumesFile)
 	if err != nil {
@@ -85,9 +91,30 @@ func main() {
 		WriteTimeout:      0, // streaming downloads + SSE
 		IdleTimeout:       120 * time.Second,
 	}
-	log.Printf("listening on %s", cfg.ListenAddr)
-	if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("server: %v", err)
+	errCh := make(chan error, 1)
+	go func() {
+		log.Printf("listening on %s", cfg.ListenAddr)
+		errCh <- httpSrv.ListenAndServe()
+	}()
+
+	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	select {
+	case err := <-errCh:
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server: %v", err)
+		}
+	case <-signalCtx.Done():
+		log.Printf("shutdown requested")
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("http shutdown: %v", err)
+	}
+	if err := xfer.Shutdown(shutdownCtx); err != nil {
+		log.Printf("transfer shutdown: %v", err)
 	}
 }
 

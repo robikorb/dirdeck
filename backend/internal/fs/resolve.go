@@ -222,6 +222,21 @@ func (s *Service) List(volumeID, rel string) ([]Entry, error) {
 
 // ListDetailed is List with truncation metadata for large directories.
 func (s *Service) ListDetailed(volumeID, rel string) (*ListResult, error) {
+	return s.listDirectory(volumeID, rel, true, MaxListEntries)
+}
+
+// ListForTransfer returns a complete, unfiltered directory listing for byte-level
+// operations. Display preferences and UI listing limits must never alter what a
+// copy or move transfers.
+func (s *Service) ListForTransfer(volumeID, rel string) ([]Entry, error) {
+	result, err := s.listDirectory(volumeID, rel, false, 0)
+	if err != nil {
+		return nil, err
+	}
+	return result.Entries, nil
+}
+
+func (s *Service) listDirectory(volumeID, rel string, displayRules bool, limit int) (*ListResult, error) {
 	res, err := s.Resolve(volumeID, rel)
 	if err != nil {
 		return nil, err
@@ -241,13 +256,17 @@ func (s *Service) ListDetailed(volumeID, rel string) (*ListResult, error) {
 		}
 		return nil, err
 	}
-	entries := make([]Entry, 0, min(len(names), MaxListEntries))
+	capacity := len(names)
+	if limit > 0 {
+		capacity = min(capacity, limit)
+	}
+	entries := make([]Entry, 0, capacity)
 	truncated := false
 	for _, name := range names {
-		if !res.Volume.ShowHiddenFiles && strings.HasPrefix(name, ".") {
+		if displayRules && !res.Volume.ShowHiddenFiles && strings.HasPrefix(name, ".") {
 			continue
 		}
-		if len(entries) >= MaxListEntries {
+		if limit > 0 && len(entries) >= limit {
 			truncated = true
 			break
 		}
@@ -258,7 +277,10 @@ func (s *Service) ListDetailed(volumeID, rel string) (*ListResult, error) {
 		childPath := filepath.Join(res.AbsPath, name)
 		info, err := os.Lstat(childPath)
 		if err != nil {
-			continue
+			if displayRules {
+				continue
+			}
+			return nil, fmt.Errorf("inspect transfer entry %q: %w", childRel, err)
 		}
 		isLink := info.Mode()&os.ModeSymlink != 0
 		isDir := info.IsDir()
@@ -465,23 +487,11 @@ func (s *Service) Remove(volumeID, rel string) error {
 
 // RemoveAllRel removes a file or directory tree beneath the volume after path validation.
 func (s *Service) RemoveAllRel(volumeID, rel string) error {
-	vol, err := s.EnsureWritableVolume(volumeID)
-	if err != nil {
-		return err
+	err := s.DeleteEntry(volumeID, rel)
+	if errors.Is(err, ErrNotFound) {
+		return nil
 	}
-	res, err := s.Resolve(volumeID, rel)
-	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			return nil
-		}
-		return err
-	}
-	abs := res.AbsPath
-	_ = res.Close()
-	if !beneath(vol.Path, abs) {
-		return ErrEscape
-	}
-	return os.RemoveAll(abs)
+	return err
 }
 
 // RenameWithin moves/renames within the same volume without crossing roots.

@@ -119,6 +119,37 @@ func TestDeleteEntryRecursiveAndSymlinkSafe(t *testing.T) {
 	}
 }
 
+func TestRemoveAllRelUsesSafeRecursiveDelete(t *testing.T) {
+	rw, svc := setupMutableFS(t)
+	tree := filepath.Join(rw, "replace-me")
+	if err := os.MkdirAll(filepath.Join(tree, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tree, ".hidden"), []byte("hidden"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.txt")
+	if err := os.WriteFile(outside, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(tree, "outside-link")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.RemoveAllRel("rw", "replace-me"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(tree); !os.IsNotExist(err) {
+		t.Fatalf("tree still exists: %v", err)
+	}
+	if got, err := os.ReadFile(outside); err != nil || string(got) != "keep" {
+		t.Fatalf("symlink target was modified: %q, %v", got, err)
+	}
+	if err := svc.RemoveAllRel("rw", ""); !errors.Is(err, appfs.ErrInvalidPath) {
+		t.Fatalf("expected volume root rejection, got %v", err)
+	}
+}
+
 func TestDeleteEntriesBatchAndCollapseDescendants(t *testing.T) {
 	rw, svc := setupMutableFS(t)
 	_ = os.MkdirAll(filepath.Join(rw, "parent", "child"), 0o755)

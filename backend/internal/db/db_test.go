@@ -2,10 +2,45 @@ package db_test
 
 import (
 	"database/sql"
+	"strings"
 	"testing"
 
 	"github.com/liquid-glass-file-manager/backend/internal/db"
 )
+
+func TestOpenAppliesSQLitePragmas(t *testing.T) {
+	database, err := db.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+
+	var journal string
+	if err := database.QueryRow(`PRAGMA journal_mode`).Scan(&journal); err != nil {
+		t.Fatal(err)
+	}
+	if strings.ToLower(journal) != "wal" {
+		t.Fatalf("journal_mode = %q, want wal", journal)
+	}
+	var foreignKeys, busyTimeout, synchronous int
+	if err := database.QueryRow(`PRAGMA foreign_keys`).Scan(&foreignKeys); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.QueryRow(`PRAGMA busy_timeout`).Scan(&busyTimeout); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.QueryRow(`PRAGMA synchronous`).Scan(&synchronous); err != nil {
+		t.Fatal(err)
+	}
+	if foreignKeys != 1 || busyTimeout != 5000 || synchronous != 1 {
+		t.Fatalf(
+			"pragmas foreign_keys=%d busy_timeout=%d synchronous=%d",
+			foreignKeys,
+			busyTimeout,
+			synchronous,
+		)
+	}
+}
 
 func TestSourcePathsMigrationPreservesExistingDatabase(t *testing.T) {
 	dataDir := t.TempDir()

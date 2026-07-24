@@ -78,6 +78,11 @@ import type {
 const EditorModal = lazy(() => import('./EditorModal'))
 
 type ViewMode = 'list' | 'grid'
+const LIST_ROW_HEIGHT = 38
+const GRID_ROW_HEIGHT = 146
+const GRID_MIN_COLUMN_WIDTH = 160
+const GRID_GAP = 14
+const VIRTUAL_OVERSCAN_ROWS = 8
 type ActivePane = 'left' | 'right'
 type RailMode = 'volumes' | 'favorites' | 'recent'
 
@@ -186,16 +191,34 @@ function Thumb({
   enabled: boolean
 }) {
   const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const retryTimer = useRef<number | null>(null)
+  useEffect(() => {
+    setFailed(false)
+    setAttempt(0)
+    return () => {
+      if (retryTimer.current !== null) window.clearTimeout(retryTimer.current)
+    }
+  }, [volumeId, entry.path])
   if (!enabled || entry.isDir || entry.isSymlink || !isImagePath(entry.name) || failed) {
     return <div className="grid-icon">{entryIcon(entry)}</div>
   }
   return (
     <div className="grid-icon thumb">
       <img
-        src={thumbnailURL(volumeId, entry.path)}
+        src={`${thumbnailURL(volumeId, entry.path)}&attempt=${attempt}`}
         alt=""
         loading="lazy"
-        onError={() => setFailed(true)}
+        onError={() => {
+          if (attempt >= 3) {
+            setFailed(true)
+            return
+          }
+          retryTimer.current = window.setTimeout(
+            () => setAttempt((value) => value + 1),
+            250 * 2 ** attempt,
+          )
+        }}
       />
     </div>
   )
@@ -245,6 +268,9 @@ function Pane({
     y: number
     entry: DirEntry
   } | null>(null)
+  const paneBodyRef = useRef<HTMLDivElement>(null)
+  const scrollFrameRef = useRef<number | null>(null)
+  const [viewport, setViewport] = useState({ scrollTop: 0, width: 0, height: 0 })
   const volume = volumes.find((v) => v.id === state.volumeId)
   const thumbsOn = Boolean(volume?.thumbnails && volume.available)
   const crumbs = useMemo(() => {
@@ -257,6 +283,30 @@ function Pane({
     }
     return items
   }, [state.path, volume?.name])
+
+  useEffect(() => {
+    const element = paneBodyRef.current
+    if (!element) return
+    const updateSize = () => setViewport((current) => ({
+      ...current,
+      width: element.clientWidth,
+      height: element.clientHeight,
+    }))
+    updateSize()
+    const observer = new ResizeObserver(updateSize)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const element = paneBodyRef.current
+    if (element) element.scrollTop = 0
+    setViewport((current) => ({ ...current, scrollTop: 0 }))
+  }, [state.volumeId, state.path, state.view])
+
+  useEffect(() => () => {
+    if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current)
+  }, [])
 
   useEffect(() => {
     if (!state.volumeId) return
@@ -423,6 +473,42 @@ function Pane({
     0,
   )
   const selectableCount = Math.min(500, state.entries.length)
+  const listStart = Math.max(
+    0,
+    Math.floor(Math.max(0, viewport.scrollTop - 32) / LIST_ROW_HEIGHT) - VIRTUAL_OVERSCAN_ROWS,
+  )
+  const listEnd = Math.min(
+    state.entries.length,
+    listStart + Math.ceil(viewport.height / LIST_ROW_HEIGHT) + VIRTUAL_OVERSCAN_ROWS * 2,
+  )
+  const visibleListEntries = state.entries.slice(listStart, listEnd)
+  const gridContentWidth = Math.max(GRID_MIN_COLUMN_WIDTH, viewport.width - 16)
+  const gridColumns = Math.max(
+    1,
+    Math.floor((gridContentWidth + GRID_GAP) / (GRID_MIN_COLUMN_WIDTH + GRID_GAP)),
+  )
+  const gridRows = Math.ceil(state.entries.length / gridColumns)
+  const gridStartRow = Math.max(
+    0,
+    Math.floor(viewport.scrollTop / GRID_ROW_HEIGHT) - VIRTUAL_OVERSCAN_ROWS,
+  )
+  const gridEndRow = Math.min(
+    gridRows,
+    gridStartRow + Math.ceil(viewport.height / GRID_ROW_HEIGHT) + VIRTUAL_OVERSCAN_ROWS * 2,
+  )
+  const visibleGridEntries = state.entries.slice(
+    gridStartRow * gridColumns,
+    Math.min(state.entries.length, gridEndRow * gridColumns),
+  )
+
+  function handlePaneScroll(event: React.UIEvent<HTMLDivElement>) {
+    const scrollTop = event.currentTarget.scrollTop
+    if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current)
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      setViewport((current) => ({ ...current, scrollTop }))
+      scrollFrameRef.current = null
+    })
+  }
 
   return (
     <section
@@ -513,7 +599,7 @@ function Pane({
         ))}
         {volume?.readOnly ? <span className="muted"> · read-only</span> : null}
       </div>
-      <div className="pane-body">
+      <div ref={paneBodyRef} className="pane-body" onScroll={handlePaneScroll}>
         {state.loading ? <p className="muted">Loading…</p> : null}
         {state.error ? (
           <div className="pane-error">
@@ -542,7 +628,12 @@ function Pane({
               </tr>
             </thead>
             <tbody>
-              {state.entries.map((entry) => (
+              {listStart > 0 ? (
+                <tr className="virtual-spacer" aria-hidden="true">
+                  <td colSpan={4} style={{ height: listStart * LIST_ROW_HEIGHT }} />
+                </tr>
+              ) : null}
+              {visibleListEntries.map((entry) => (
                 <tr
                   key={entry.path}
                   className={state.selectedPaths.includes(entry.path) ? 'selected' : ''}
@@ -581,46 +672,62 @@ function Pane({
                   </td>
                 </tr>
               ))}
+              {listEnd < state.entries.length ? (
+                <tr className="virtual-spacer" aria-hidden="true">
+                  <td
+                    colSpan={4}
+                    style={{ height: (state.entries.length - listEnd) * LIST_ROW_HEIGHT }}
+                  />
+                </tr>
+              ) : null}
             </tbody>
           </table>
         ) : null}
         {!state.loading && !state.error && state.view === 'grid' ? (
-          <div className="grid">
-            {state.entries.map((entry) => (
-              <div
-                key={entry.path}
-                className={`grid-item ${state.selectedPaths.includes(entry.path) ? 'selected' : ''}`}
-                role="button"
-                tabIndex={0}
-                aria-pressed={state.selectedPaths.includes(entry.path)}
-                onClick={(event) => handleEntryClick(entry, event)}
-                onContextMenu={(event) => openContextMenu(entry, event)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && entry.isDir) {
-                    event.preventDefault()
-                    activateEntry(entry)
-                  } else if (event.key === ' ' && !entry.isDir) {
-                    event.preventDefault()
-                    selectEntry(entry)
-                  }
-                }}
-              >
-                <Thumb volumeId={state.volumeId} entry={entry} enabled={thumbsOn} />
-                <div className="grid-name" title={entry.name}>{entry.name}</div>
-                {!entry.isDir && isEditablePath(entry.path) ? (
-                  <button
-                    type="button"
-                    className="entry-edit-button grid-edit-button"
-                    aria-label={`Edit ${entry.name}`}
-                    title="Open in editor"
-                    onClick={(event) => editEntry(entry, event)}
-                    onKeyDown={(event) => event.stopPropagation()}
-                  >
-                    <Pencil size={14} />
-                  </button>
-                ) : null}
-              </div>
-            ))}
+          <div
+            className="grid-virtual"
+            style={{ height: Math.max(0, gridRows * GRID_ROW_HEIGHT - GRID_GAP) }}
+          >
+            <div
+              className="grid grid-window"
+              style={{ top: gridStartRow * GRID_ROW_HEIGHT }}
+            >
+              {visibleGridEntries.map((entry) => (
+                <div
+                  key={entry.path}
+                  className={`grid-item ${state.selectedPaths.includes(entry.path) ? 'selected' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={state.selectedPaths.includes(entry.path)}
+                  onClick={(event) => handleEntryClick(entry, event)}
+                  onContextMenu={(event) => openContextMenu(entry, event)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && entry.isDir) {
+                      event.preventDefault()
+                      activateEntry(entry)
+                    } else if (event.key === ' ' && !entry.isDir) {
+                      event.preventDefault()
+                      selectEntry(entry)
+                    }
+                  }}
+                >
+                  <Thumb volumeId={state.volumeId} entry={entry} enabled={thumbsOn} />
+                  <div className="grid-name" title={entry.name}>{entry.name}</div>
+                  {!entry.isDir && isEditablePath(entry.path) ? (
+                    <button
+                      type="button"
+                      className="entry-edit-button grid-edit-button"
+                      aria-label={`Edit ${entry.name}`}
+                      title="Open in editor"
+                      onClick={(event) => editEntry(entry, event)}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
       </div>

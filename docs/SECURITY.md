@@ -24,7 +24,8 @@ Phase 0 implements single-user authentication before directory browsing.
 
 - Bootstrap credentials come from operator-managed secret files.
 - Store only an Argon2id password hash.
-- Use random, opaque, revocable server-side sessions.
+- Use random, opaque, revocable server-side sessions; store only a SHA-256
+  digest of each cookie token.
 - Use HTTP-only and `SameSite=Strict` cookies.
 - Use secure cookies behind HTTPS.
 - Rotate the session after login.
@@ -75,6 +76,10 @@ with SQLite persistence.
 - Reject every write API that targets a read-only volume; reject moves from
   read-only sources.
 - Never silently convert a move or copy failure into success.
+- Never apply UI hidden-file preferences or display listing caps to transfer
+  traversal.
+- Route conflict replacement and move-source cleanup through the same
+  descriptor-based recursive deletion used by the Delete API.
 
 Fixtures and automated tests must use disposable directories only — never real
 user storage.
@@ -125,9 +130,13 @@ Additional rules:
   image previews share the encoded-byte ceiling.
 - Responses set `X-Content-Type-Options: nosniff` and do not log file bytes.
 
-Directory listings are capped at 10,000 entries (`truncated: true`) to limit
-memory on huge NAS trees. Unavailable mounts return `503` after startup if the
+Browser directory listings are capped at 10,000 entries (`truncated: true`) to
+limit memory on huge NAS trees. This is a display-only limit and never affects
+copy or move traversal. Unavailable mounts return `503` after startup if the
 root later disappears — see [OPERATIONS.md](OPERATIONS.md).
+
+Responses include a restrictive Content Security Policy in addition to
+`nosniff`, frame denial, and same-origin referrer policy.
 
 ## Text and DOCX previews
 
@@ -188,6 +197,7 @@ Before write operations are enabled, automated tests must cover:
 - batch deletion prevalidation, root rejection, descendant collapse, symlink
   refusal, read-only enforcement, and the 500-item limit;
 - cross-filesystem move failure before and after destination completion;
+- hidden-file and beyond-display-limit directory copy/move behavior;
 - authentication, session expiry, CSRF, and login rate limiting.
 
 Phase 3 adds coverage for thumbnail byte/pixel/concurrency limits, preference

@@ -103,6 +103,53 @@ func TestSameFilesystemMoveRename(t *testing.T) {
 	}
 }
 
+func TestCrossFilesystemMovePreservesHiddenFilesBeforeDeletingSource(t *testing.T) {
+	a, b, _, mgr, _ := setupTwoRW(t)
+	source := filepath.Join(a, "hidden-tree")
+	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, ".env"), []byte("hidden"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("main"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "visible.txt"), []byte("visible"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	mgr.SetTestHooks(nil, forceEXDEV)
+	job, err := mgr.Create(transfer.CreateRequest{
+		Kind:           transfer.KindMove,
+		SourceVolumeID: "vol-a",
+		SourcePath:     "hidden-tree",
+		DestVolumeID:   "vol-b",
+		DestDir:        "outbox",
+		ConflictPolicy: transfer.PolicyReplace,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := waitStatus(t, mgr, job.ID, transfer.StatusCompleted)
+	if done.FilesTotal != 3 || done.FilesDone != 3 {
+		t.Fatalf("unexpected progress: %+v", done)
+	}
+	if _, err := os.Stat(source); !os.IsNotExist(err) {
+		t.Fatalf("source still exists or stat failed unexpectedly: %v", err)
+	}
+	for rel, want := range map[string]string{
+		".env":        "hidden",
+		".git/HEAD":   "main",
+		"visible.txt": "visible",
+	} {
+		got, err := os.ReadFile(filepath.Join(b, "outbox", "hidden-tree", rel))
+		if err != nil || string(got) != want {
+			t.Fatalf("destination %s: err=%v got=%q", rel, err, got)
+		}
+	}
+}
+
 func TestBatchMove(t *testing.T) {
 	a, b, _, mgr, _ := setupTwoRW(t)
 	job, err := mgr.Create(transfer.CreateRequest{

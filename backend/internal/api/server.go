@@ -101,6 +101,12 @@ func withSecurityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set(
+			"Content-Security-Policy",
+			"default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; "+
+				"script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "+
+				"font-src 'self' data:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:",
+		)
 		next.ServeHTTP(w, r)
 	})
 }

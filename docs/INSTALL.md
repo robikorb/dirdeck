@@ -25,7 +25,7 @@ Generated local files:
 
 | Path | Purpose | Git behavior |
 |------|---------|--------------|
-| `.env` | Port, state volume, PUID, PGID, umask, secure-cookie flag | ignored |
+| `.env` | Bind/port, state volume, runtime identity, auth and backup policy | ignored |
 | `secrets/admin_username` | Bootstrap administrator name | ignored, mode 0600 |
 | `secrets/admin_password` | Bootstrap administrator password | ignored, mode 0600 |
 | `config/volumes.yaml` | Runtime volume registry | ignored |
@@ -87,12 +87,17 @@ Edit `.env`:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
+| `LGFM_BIND_ADDR` | `127.0.0.1` | Host bind address; use `0.0.0.0` only for approved LAN/VPN access |
 | `LGFM_PORT` | `3002` | Host HTTP port |
 | `LGFM_DATA_VOLUME` | `liquid-glass-file-manager_app-state` | Stable Docker state volume |
 | `PUID` | `1000` | Non-root runtime user ID |
 | `PGID` | `1000` | Non-root runtime group ID |
 | `UMASK` | `022` | Creation mask for new files |
 | `LGFM_SECURE_COOKIE` | `false` | Set `true` behind HTTPS |
+| `LGFM_LOGIN_RATE_LIMIT_MAX` | `10` | Failed attempts allowed per client/window |
+| `LGFM_LOGIN_RATE_LIMIT_SEC` | `60` | Login rate-limit window in seconds |
+| `LGFM_SESSION_TTL_HOURS` | `12` | Browser session lifetime |
+| `LGFM_BACKUP_RETENTION` | `10` | State/config backup pairs retained; `0` keeps all |
 
 Linux operators should normally use the UID and GID that own the writable bind
 mounts:
@@ -140,8 +145,15 @@ for convenience.
 
 ## HTTPS and remote access
 
-The default configuration is intended for localhost or a trusted LAN. Prefer a
-VPN or Tailscale for remote access.
+The default configuration binds only to localhost. For an approved trusted LAN
+or VPN deployment:
+
+```dotenv
+LGFM_BIND_ADDR=0.0.0.0
+```
+
+Restrict access with the host firewall. Prefer a VPN or Tailscale for remote
+access.
 
 When a reverse proxy terminates HTTPS:
 
@@ -162,3 +174,7 @@ docker compose down
 
 See [OPERATIONS.md](OPERATIONS.md) for mount outages and transfer recovery, and
 [UPGRADING.md](UPGRADING.md) for updates and rollback.
+
+SIGTERM/SIGINT triggers graceful HTTP shutdown and cancellation of active
+transfer workers. The container waits for durable status and partial cleanup
+within the shutdown grace period.

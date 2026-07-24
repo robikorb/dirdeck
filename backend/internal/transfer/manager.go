@@ -112,6 +112,8 @@ type Manager struct {
 
 	mu     sync.Mutex
 	live   map[string]*liveJob
+	wg     sync.WaitGroup
+	closed bool
 	subsMu sync.RWMutex
 	subs   map[chan Job]struct{}
 
@@ -269,7 +271,6 @@ func (m *Manager) Create(req CreateRequest) (*Job, error) {
 		return nil, fmt.Errorf("%w: destination is not a directory", ErrInvalidRequest)
 	}
 
-	var filesTotal, bytesTotal int64
 	destName := fmt.Sprintf("%d items", len(sourcePaths))
 	for index, sourcePath := range sourcePaths {
 		src, err := m.fs.Stat(req.SourceVolumeID, sourcePath)
@@ -299,12 +300,6 @@ func (m *Manager) Create(req CreateRequest) (*Job, error) {
 		); err != nil {
 			return nil, err
 		}
-		itemFiles, itemBytes, err := m.planTotals(req.SourceVolumeID, sourcePath, src.IsDir)
-		if err != nil {
-			return nil, err
-		}
-		filesTotal += itemFiles
-		bytesTotal += itemBytes
 		if len(sourcePaths) == 1 && index == 0 {
 			destName = itemName
 		}
@@ -328,10 +323,6 @@ func (m *Manager) Create(req CreateRequest) (*Job, error) {
 	if freeKnown {
 		freeKnownInt = 1
 		freeSpace = freeBytes
-		if kind == KindCopy && bytesTotal > freeBytes {
-			return nil, fmt.Errorf("%w: need %d bytes, only %d bytes available",
-				ErrInsufficientSpace, bytesTotal, freeBytes)
-		}
 	}
 
 	_, err = m.db.Exec(`
@@ -342,7 +333,7 @@ func (m *Manager) Create(req CreateRequest) (*Job, error) {
 			created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, 0, 0, '', ?, ?, ?, ?, ?)
 	`, id, kind, StatusQueued, req.SourceVolumeID, req.SourcePath, string(sourcePathsJSON), req.DestVolumeID, req.DestDir, destName,
-		policy, bytesTotal, filesTotal, staging, freeKnownInt, freeSpace,
+		policy, 0, 0, staging, freeKnownInt, freeSpace,
 		now.Format(time.RFC3339), now.Format(time.RFC3339))
 	if err != nil {
 		return nil, err
@@ -390,6 +381,10 @@ func (m *Manager) validateTransferTarget(
 }
 
 func (m *Manager) planTotals(volumeID, rel string, isDir bool) (files, bytes int64, err error) {
+	return m.planTotalsContext(context.Background(), volumeID, rel, isDir)
+}
+
+func (m *Manager) planTotalsContext(ctx context.Context, volumeID, rel string, isDir bool) (files, bytes int64, err error) {
 	if !isDir {
 		meta, err := m.fs.Stat(volumeID, rel)
 		if err != nil {
@@ -397,7 +392,7 @@ func (m *Manager) planTotals(volumeID, rel string, isDir bool) (files, bytes int
 		}
 		return 1, meta.Size, nil
 	}
-	err = m.walkFiles(volumeID, rel, func(path string, size int64) error {
+	err = m.walkFilesContext(ctx, volumeID, rel, func(path string, size int64) error {
 		files++
 		bytes += size
 		return nil
@@ -406,7 +401,14 @@ func (m *Manager) planTotals(volumeID, rel string, isDir bool) (files, bytes int
 }
 
 func (m *Manager) walkFiles(volumeID, rel string, fn func(path string, size int64) error) error {
-	entries, err := m.fs.List(volumeID, rel)
+	return m.walkFilesContext(context.Background(), volumeID, rel, fn)
+}
+
+func (m *Manager) walkFilesContext(ctx context.Context, volumeID, rel string, fn func(path string, size int64) error) error {
+	if err := ctx.Err(); err != nil {
+		return ErrCancelled
+	}
+	entries, err := m.fs.ListForTransfer(volumeID, rel)
 	if err != nil {
 		return err
 	}
@@ -415,7 +417,7 @@ func (m *Manager) walkFiles(volumeID, rel string, fn func(path string, size int6
 			continue // never follow or copy symlink targets in Phase 1
 		}
 		if e.IsDir {
-			if err := m.walkFiles(volumeID, e.Path, fn); err != nil {
+			if err := m.walkFilesContext(ctx, volumeID, e.Path, fn); err != nil {
 				return err
 			}
 			continue
@@ -425,6 +427,46 @@ func (m *Manager) walkFiles(volumeID, rel string, fn func(path string, size int6
 		}
 	}
 	return nil
+}
+
+func (m *Manager) prepareJob(ctx context.Context, id string) error {
+	job, err := m.Get(id)
+	if err != nil {
+		return err
+	}
+	var filesTotal, bytesTotal int64
+	for _, sourcePath := range job.SourcePaths {
+		src, err := m.fs.Stat(job.SourceVolumeID, sourcePath)
+		if err != nil {
+			return err
+		}
+		files, bytes, err := m.planTotalsContext(ctx, job.SourceVolumeID, sourcePath, src.IsDir)
+		if err != nil {
+			return err
+		}
+		filesTotal += files
+		bytesTotal += bytes
+	}
+	if job.FreeSpaceKnown && job.FreeSpaceBytes != nil &&
+		(job.Kind == KindCopy || job.SourceVolumeID != job.DestVolumeID) &&
+		bytesTotal > *job.FreeSpaceBytes {
+		return fmt.Errorf(
+			"%w: need %d bytes, only %d bytes available",
+			ErrInsufficientSpace,
+			bytesTotal,
+			*job.FreeSpaceBytes,
+		)
+	}
+	_, err = m.db.Exec(
+		`UPDATE transfer_jobs
+		 SET bytes_total=?, files_total=?, current_path='', updated_at=?
+		 WHERE id=?`,
+		bytesTotal,
+		filesTotal,
+		time.Now().UTC().Format(time.RFC3339),
+		id,
+	)
+	return err
 }
 
 // Get returns a job by ID.
@@ -613,6 +655,10 @@ func (m *Manager) ResolveConflict(id string, res ConflictResolution) (*Job, erro
 
 func (m *Manager) startWorker(id string) {
 	m.mu.Lock()
+	if m.closed {
+		m.mu.Unlock()
+		return
+	}
 	if _, exists := m.live[id]; exists {
 		m.mu.Unlock()
 		return
@@ -620,6 +666,7 @@ func (m *Manager) startWorker(id string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	live := &liveJob{cancel: cancel, wait: make(chan conflictReply, 1)}
 	m.live[id] = live
+	m.wg.Add(1)
 	m.mu.Unlock()
 
 	go func() {
@@ -627,9 +674,39 @@ func (m *Manager) startWorker(id string) {
 			m.mu.Lock()
 			delete(m.live, id)
 			m.mu.Unlock()
+			m.wg.Done()
 		}()
 		m.runJob(ctx, id, live)
 	}()
+}
+
+// Shutdown cancels active workers and waits for their staging files and durable
+// status to be reconciled before the process exits.
+func (m *Manager) Shutdown(ctx context.Context) error {
+	m.mu.Lock()
+	m.closed = true
+	for _, live := range m.live {
+		if live.cancel != nil {
+			live.cancel()
+		}
+		select {
+		case live.wait <- conflictReply{resolution: ConflictResolution{Action: "cancel"}}:
+		default:
+		}
+	}
+	m.mu.Unlock()
+
+	done := make(chan struct{})
+	go func() {
+		m.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (m *Manager) runJob(ctx context.Context, id string, live *liveJob) {
@@ -648,9 +725,12 @@ func (m *Manager) runJob(ctx context.Context, id string, live *liveJob) {
 		m.publish(*job)
 	}
 
-	if job != nil && job.Kind == KindMove {
+	if job != nil {
+		err = m.prepareJob(ctx, id)
+	}
+	if err == nil && job != nil && job.Kind == KindMove {
 		err = m.executeMove(ctx, id, live)
-	} else {
+	} else if err == nil {
 		err = m.executeCopy(ctx, id, live)
 	}
 	now = time.Now().UTC()
@@ -823,7 +903,7 @@ func (m *Manager) ensureDestDir(ctx context.Context, id string, live *liveJob, d
 }
 
 func (m *Manager) copyDirContents(ctx context.Context, id string, live *liveJob, srcVol, srcRel, dstVol, dstRel string) error {
-	entries, err := m.fs.List(srcVol, srcRel)
+	entries, err := m.fs.ListForTransfer(srcVol, srcRel)
 	if err != nil {
 		return err
 	}
@@ -938,17 +1018,20 @@ func (m *Manager) copyOneFile(ctx context.Context, id string, live *liveJob, src
 	buf := make([]byte, appfs.CopyBufferSize)
 	start := time.Now()
 	var windowBytes int64
+	var pendingProgress int64
 	windowStart := start
 
 	written, err := appfs.StreamCopy(dst.File, src.File, buf, func(n int) error {
-		if ctx.Err() != nil || m.isCancelling(id) {
+		if ctx.Err() != nil {
 			return ErrCancelled
 		}
 		windowBytes += int64(n)
-		if err := m.bumpProgress(id, int64(n), false, srcRel); err != nil {
-			return err
-		}
+		pendingProgress += int64(n)
 		if time.Since(windowStart) >= 200*time.Millisecond {
+			if err := m.bumpProgress(id, pendingProgress, false, srcRel); err != nil {
+				return err
+			}
+			pendingProgress = 0
 			sec := time.Since(windowStart).Seconds()
 			speed := float64(windowBytes) / sec
 			_, _ = m.db.Exec(`UPDATE transfer_jobs SET bytes_per_second=?, updated_at=? WHERE id=?`,
@@ -961,6 +1044,11 @@ func (m *Manager) copyOneFile(ctx context.Context, id string, live *liveJob, src
 		}
 		return nil
 	})
+	if pendingProgress > 0 {
+		if progressErr := m.bumpProgress(id, pendingProgress, false, srcRel); err == nil {
+			err = progressErr
+		}
+	}
 	closeErr := dst.File.Sync()
 	_ = dst.Close()
 	if err != nil {
@@ -990,6 +1078,10 @@ func (m *Manager) copyOneFile(ctx context.Context, id string, live *liveJob, src
 		_ = m.fs.Remove(dstVol, stagingRel)
 		return err
 	}
+	if ctx.Err() != nil {
+		_ = m.fs.Remove(dstVol, stagingRel)
+		return ErrCancelled
+	}
 
 	// Preserve modtime best-effort.
 	_ = os.Chtimes(dst.AbsPath, src.Info.ModTime(), src.Info.ModTime())
@@ -1003,6 +1095,10 @@ func (m *Manager) copyOneFile(ctx context.Context, id string, live *liveJob, src
 	if err := m.fs.RenameWithin(dstVol, stagingRel, destRel); err != nil {
 		_ = m.fs.Remove(dstVol, stagingRel)
 		return err
+	}
+	if ctx.Err() != nil {
+		_ = m.fs.RemoveAllRel(dstVol, destRel)
+		return ErrCancelled
 	}
 	_ = m.bumpProgress(id, 0, true, srcRel)
 	return nil

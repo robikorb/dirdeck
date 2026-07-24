@@ -1898,9 +1898,7 @@ export default function App() {
             </p>
           </div>
         </aside>
-      ) : (
-        <div className="inspector collapsed-auto" hidden />
-      )}
+      ) : null}
     </div>
       {renameTarget ? (
         <RenameModal

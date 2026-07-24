@@ -18,6 +18,8 @@ after the first stable release.
   clamped long names instead of narrow columns with excessive wrapping.
 - File and folder context menus expose open/edit, copy, move, copy-path,
   rename, and permanent-delete actions with permission-aware disabled states.
+- Closing the Inspector now removes its responsive overlay completely instead
+  of leaving an invisible layer that intercepted pane clicks.
 
 ## 0.1.0-rc.2 - 2026-07-24
 

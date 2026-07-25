@@ -125,6 +125,16 @@ The Inspector supports image and media preview, bounded text preview, sanitized
 Markdown, pretty-printed JSON, and bounded DOCX text extraction. Preview
 availability depends on the volume policy and file type.
 
+## Locations sidebar
+
+The sidebar on the left stacks three sections — Volumes, Favorites, and Recent.
+Click a section heading to collapse or expand it; all three can be open at once.
+Each section header carries its own action: refresh volume availability, add or
+remove the current folder as a favorite, and clear recent locations.
+
+Clicking a volume opens it in the active pane. Clicking a favorite or a recent
+entry navigates the active pane to that folder.
+
 ## Favorites and recent folders
 
 Cmd/Ctrl+D favorites the current folder. Favorites, recent locations, pane

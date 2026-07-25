@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import {
   ArrowLeftRight,
   CheckSquare2,
+  ChevronDown,
   ChevronRight,
   Clock,
   File,
@@ -84,7 +85,7 @@ const GRID_MIN_COLUMN_WIDTH = 160
 const GRID_GAP = 14
 const VIRTUAL_OVERSCAN_ROWS = 8
 type ActivePane = 'left' | 'right'
-type RailMode = 'volumes' | 'favorites' | 'recent'
+type SectionKey = 'volumes' | 'favorites' | 'recent'
 
 type PaneState = {
   volumeId: string
@@ -957,7 +958,14 @@ export default function App() {
   const [meta, setMeta] = useState<FileMeta | null>(null)
   const [metaVolumeId, setMetaVolumeId] = useState('')
   const [activePane, setActivePane] = useState<ActivePane>('left')
-  const [railMode, setRailMode] = useState<RailMode>('volumes')
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
+    volumes: true,
+    favorites: true,
+    recent: false,
+  })
+  const toggleSection = useCallback((key: SectionKey) => {
+    setOpenSections((current) => ({ ...current, [key]: !current[key] }))
+  }, [])
   const [favorites, setFavorites] = useState<Favorite[]>([])
   const [recents, setRecents] = useState<RecentLocation[]>([])
   const [jobs, setJobs] = useState<TransferJob[]>([])
@@ -1029,7 +1037,6 @@ export default function App() {
     if (pane === 'left') setLeft(apply)
     else setRight(apply)
     setActivePane(pane)
-    setRailMode('volumes')
     void recordRecent(volumeId, path)
       .then(() => listRecent())
       .then(setRecents)
@@ -1674,154 +1681,169 @@ export default function App() {
   return (
     <>
     <div className={`app-shell${inspectorOpen ? '' : ' inspector-collapsed'}`}>
-      <nav className="glass rail" aria-label="Locations">
-        <div className="rail-brand" aria-hidden>
-          <img src="/app-icon.svg" alt="" />
+      <aside className="glass side-panel" aria-label="Locations">
+        <div className="side-brand">
+          <img src="/app-icon.svg" alt="" aria-hidden />
+          <span>Liquid Glass</span>
         </div>
-        <button
-          type="button"
-          className={railMode === 'volumes' ? 'active' : ''}
-          aria-label="Volumes"
-          title="Volumes"
-          onClick={() => setRailMode('volumes')}
-        >
-          <HardDrive size={18} />
-          Vols
-        </button>
-        <button
-          type="button"
-          className={railMode === 'favorites' ? 'active' : ''}
-          aria-label="Favorites"
-          title="Favorites (Ctrl/Cmd+D to bookmark current folder)"
-          onClick={() => setRailMode('favorites')}
-        >
-          <Star size={18} />
-          Fav
-        </button>
-        <button
-          type="button"
-          className={railMode === 'recent' ? 'active' : ''}
-          aria-label="Recent locations"
-          title="Recent"
-          onClick={() => setRailMode('recent')}
-        >
-          <Clock size={18} />
-          Recent
-        </button>
-        <div className="rail-spacer" />
-        <div className="rail-status">
-          {activeCount ? `${activeCount} xfer` : 'Idle'}
-          <br />
-          {username}
-        </div>
-        <button
-          type="button"
-          aria-label="Sign out"
-          onClick={() => {
-            void logout().then(() => {
-              setAuthed(false)
-              setVolumes([])
-              setJobs([])
-              persistReady.current = false
-            })
-          }}
-        >
-          <LogOut size={18} />
-          Out
-        </button>
-      </nav>
 
-      <aside className="glass side-panel" aria-label="Location browser">
-        <div className="side-panel-header">
-          <strong>
-            {railMode === 'volumes' ? 'Volumes' : railMode === 'favorites' ? 'Favorites' : 'Recent'}
-          </strong>
-          {railMode === 'favorites' ? (
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label={currentFav ? 'Remove favorite' : 'Add favorite'}
-              title={currentFav ? 'Remove favorite' : 'Favorite current folder'}
-              onClick={() => {
-                if (currentFav) {
-                  void removeFavorite(currentFav.id).then(refreshPrefs).catch(() => undefined)
-                } else {
-                  void favoriteCurrent()
-                }
-              }}
-            >
-              {currentFav ? <StarOff size={14} /> : <Star size={14} />}
-            </button>
-          ) : null}
-          {railMode === 'recent' ? (
-            <button
-              type="button"
-              className="text-btn"
-              onClick={() => void clearRecent().then(() => setRecents([]))}
-            >
-              Clear
-            </button>
-          ) : null}
-          {railMode === 'volumes' ? (
-            <button
-              type="button"
-              className="text-btn"
-              title="Refresh availability (Ctrl/Cmd+R)"
-              onClick={() => void refreshVolumes().then(() => refreshPanes())}
-            >
-              Refresh
-            </button>
-          ) : null}
+        <div className="side-sections">
+          <section className="side-section">
+            <div className="side-section-header">
+              <button
+                type="button"
+                className="side-section-toggle"
+                aria-expanded={openSections.volumes}
+                onClick={() => toggleSection('volumes')}
+              >
+                {openSections.volumes ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <HardDrive size={14} />
+                <span>Volumes</span>
+              </button>
+              <button
+                type="button"
+                className="text-btn"
+                title="Refresh availability (Ctrl/Cmd+R)"
+                onClick={() => void refreshVolumes().then(() => refreshPanes())}
+              >
+                Refresh
+              </button>
+            </div>
+            {openSections.volumes ? (
+              <ul className="side-list">
+                {volumes.map((v) => (
+                  <li key={v.id}>
+                    <button
+                      type="button"
+                      className={left.volumeId === v.id || right.volumeId === v.id ? 'active' : ''}
+                      onClick={() => selectVolume(v.id)}
+                    >
+                      <HardDrive size={14} />
+                      <span className="side-label">
+                        {v.name}
+                        {!v.available ? <em> · offline</em> : null}
+                        {v.readOnly ? <em> · RO</em> : null}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+                {volumes.length === 0 ? (
+                  <li className="muted side-empty">No volumes configured.</li>
+                ) : null}
+              </ul>
+            ) : null}
+          </section>
+
+          <section className="side-section">
+            <div className="side-section-header">
+              <button
+                type="button"
+                className="side-section-toggle"
+                aria-expanded={openSections.favorites}
+                onClick={() => toggleSection('favorites')}
+              >
+                {openSections.favorites ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <Star size={14} />
+                <span>Favorites</span>
+              </button>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label={currentFav ? 'Remove favorite' : 'Add favorite'}
+                title={currentFav ? 'Remove favorite' : 'Favorite current folder (Ctrl/Cmd+D)'}
+                onClick={() => {
+                  if (currentFav) {
+                    void removeFavorite(currentFav.id).then(refreshPrefs).catch(() => undefined)
+                  } else {
+                    void favoriteCurrent()
+                  }
+                }}
+              >
+                {currentFav ? <StarOff size={14} /> : <Star size={14} />}
+              </button>
+            </div>
+            {openSections.favorites ? (
+              <ul className="side-list">
+                {favorites.map((f) => (
+                  <li key={f.id}>
+                    <button type="button" onClick={() => navigatePane(activePane, f.volumeId, f.path)}>
+                      <Star size={14} />
+                      <span className="side-label">{f.label || f.path || f.volumeId}</span>
+                    </button>
+                  </li>
+                ))}
+                {favorites.length === 0 ? (
+                  <li className="muted side-empty">No favorites yet. Press Ctrl/Cmd+D.</li>
+                ) : null}
+              </ul>
+            ) : null}
+          </section>
+
+          <section className="side-section">
+            <div className="side-section-header">
+              <button
+                type="button"
+                className="side-section-toggle"
+                aria-expanded={openSections.recent}
+                onClick={() => toggleSection('recent')}
+              >
+                {openSections.recent ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <Clock size={14} />
+                <span>Recent</span>
+              </button>
+              {recents.length > 0 ? (
+                <button
+                  type="button"
+                  className="text-btn"
+                  onClick={() => void clearRecent().then(() => setRecents([]))}
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            {openSections.recent ? (
+              <ul className="side-list">
+                {recents.map((r) => (
+                  <li key={`${r.volumeId}:${r.path}`}>
+                    <button type="button" onClick={() => navigatePane(activePane, r.volumeId, r.path)}>
+                      <Clock size={14} />
+                      <span className="side-label">
+                        {volumes.find((v) => v.id === r.volumeId)?.name ?? r.volumeId}
+                        {r.path ? ` / ${r.path}` : ' /'}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+                {recents.length === 0 ? (
+                  <li className="muted side-empty">No recent folders yet.</li>
+                ) : null}
+              </ul>
+            ) : null}
+          </section>
         </div>
-        <ul className="side-list">
-          {railMode === 'volumes'
-            ? volumes.map((v) => (
-                <li key={v.id}>
-                  <button
-                    type="button"
-                    className={left.volumeId === v.id || right.volumeId === v.id ? 'active' : ''}
-                    onClick={() => selectVolume(v.id)}
-                  >
-                    <HardDrive size={14} />
-                    <span className="side-label">
-                      {v.name}
-                      {!v.available ? <em> · offline</em> : null}
-                      {v.readOnly ? <em> · RO</em> : null}
-                    </span>
-                  </button>
-                </li>
-              ))
-            : null}
-          {railMode === 'favorites'
-            ? favorites.map((f) => (
-                <li key={f.id}>
-                  <button type="button" onClick={() => navigatePane(activePane, f.volumeId, f.path)}>
-                    <Star size={14} />
-                    <span className="side-label">{f.label || f.path || f.volumeId}</span>
-                  </button>
-                </li>
-              ))
-            : null}
-          {railMode === 'recent'
-            ? recents.map((r) => (
-                <li key={`${r.volumeId}:${r.path}`}>
-                  <button type="button" onClick={() => navigatePane(activePane, r.volumeId, r.path)}>
-                    <Clock size={14} />
-                    <span className="side-label">
-                      {volumes.find((v) => v.id === r.volumeId)?.name ?? r.volumeId}
-                      {r.path ? ` / ${r.path}` : ' /'}
-                    </span>
-                  </button>
-                </li>
-              ))
-            : null}
-          {railMode === 'favorites' && favorites.length === 0 ? (
-            <li className="muted side-empty">No favorites yet. Press Ctrl/Cmd+D.</li>
-          ) : null}
-          {railMode === 'recent' && recents.length === 0 ? (
-            <li className="muted side-empty">No recent folders yet.</li>
-          ) : null}
-        </ul>
+
+        <div className="side-footer">
+          <div className="side-status">
+            <strong>{username}</strong>
+            <span className="muted">{activeCount ? `${activeCount} transfer${activeCount > 1 ? 's' : ''}` : 'Idle'}</span>
+          </div>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Sign out"
+            title="Sign out"
+            onClick={() => {
+              void logout().then(() => {
+                setAuthed(false)
+                setVolumes([])
+                setJobs([])
+                persistReady.current = false
+              })
+            }}
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
       </aside>
 
       <Pane

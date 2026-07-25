@@ -211,12 +211,19 @@ must never silently become permanent deletion.
 
 The selected primary screen contains:
 
-- location rail;
+- a single locations sidebar;
 - independent left and right pane state;
 - thumbnail and list view modes;
 - directional transfer controls;
 - optional inspector;
 - operation status area.
+
+The sidebar stacks Volumes, Favorites, and Recent as independently collapsible
+sections. An earlier design put a 72px icon rail beside it whose only job was
+switching which of the three the panel showed. In a dual-pane manager horizontal
+space is the scarcest resource, so a navigation level that costs a permanent
+column to choose between three lists does not pay for itself — all three are now
+visible at once. Do not reintroduce a mode switch here; add sections instead.
 
 Keyboard navigation, focus management, selection behavior, and drag and drop
 must be treated as product features, not visual polish.

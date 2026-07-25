@@ -12,6 +12,13 @@ after the first stable release.
 - Graceful HTTP and transfer-worker shutdown for container restarts.
 - A restrictive same-origin Content Security Policy.
 
+### Changed
+
+- The 72-pixel icon rail is gone. Volumes, Favorites, and Recent are now
+  collapsible sections inside a single locations sidebar, so all three are
+  visible at once instead of one at a time behind a mode switch, and the panes
+  get the reclaimed width.
+
 ### Fixed
 
 - Closing the Inspector no longer strips 280 pixels from the layout. The empty

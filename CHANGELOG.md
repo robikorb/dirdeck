@@ -14,6 +14,11 @@ after the first stable release.
 
 ### Fixed
 
+- Closing the Inspector no longer strips 280 pixels from the layout. The empty
+  grid track was still maximized to its full width before the panes expanded, so
+  the space stayed reserved and unusable. The closed Inspector is now a slim
+  rail carrying its own reopen button, in the position the panel was closed
+  from, and the panes reclaim the width.
 - Shutdown now closes open transfer event streams first. An open stream never
   returns to idle, so `http.Server.Shutdown` previously blocked for its whole
   deadline and left transfer workers no time to clean staging files or record

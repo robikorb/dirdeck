@@ -1673,7 +1673,7 @@ export default function App() {
 
   return (
     <>
-    <div className="app-shell">
+    <div className={`app-shell${inspectorOpen ? '' : ' inspector-collapsed'}`}>
       <nav className="glass rail" aria-label="Locations">
         <div className="rail-brand" aria-hidden>
           <img src="/app-icon.svg" alt="" />
@@ -2041,7 +2041,21 @@ export default function App() {
             </p>
           </div>
         </aside>
-      ) : null}
+      ) : (
+        // Collapsed rail keeps a reopen control where the panel actually lives.
+        // The toggle in the centre transfer strip is too far away to find.
+        <div className="glass inspector-rail">
+          <button
+            type="button"
+            className="inspector-rail-button"
+            aria-label="Show inspector"
+            title="Show inspector (Ctrl/Cmd+I)"
+            onClick={() => setInspectorOpen(true)}
+          >
+            <PanelRightOpen size={16} />
+          </button>
+        </div>
+      )}
     </div>
       {renameTarget ? (
         <RenameModal

@@ -63,6 +63,44 @@ input:focus-visible,
   min-width: 0;
 }
 
+/* An empty `minmax(0, 280px)` track is still maximized to 280px before the `1fr`
+   panes expand, so the closed inspector would otherwise hold its full width as
+   dead space. Shrink the track to the collapsed rail instead.
+   Scoped to the widths that actually place an `inspector` grid area — this
+   selector outranks the narrower `.app-shell` media rules on specificity. */
+@media (min-width: 1440px) {
+  .app-shell.inspector-collapsed {
+    grid-template-columns: 72px minmax(140px, 180px) minmax(0, 1fr) 36px minmax(0, 1fr) 40px;
+  }
+}
+
+.inspector-rail {
+  grid-area: inspector;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px 0;
+  min-width: 0;
+}
+
+.inspector-rail-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel-strong);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.inspector-rail-button:hover {
+  background: var(--bg-selected);
+  border-color: var(--border-strong);
+  color: var(--accent);
+}
+
 @media (max-width: 1439px) {
   .app-shell {
     grid-template-columns: 72px minmax(120px, 160px) minmax(0, 1fr) 36px minmax(0, 1fr);
@@ -76,6 +114,11 @@ input:focus-visible,
     bottom: 14px;
     width: min(360px, calc(100vw - 28px));
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  }
+  /* No `inspector` grid area exists below this width; the rail would create an
+     implicit track. The centre transfer strip keeps the toggle here. */
+  .inspector-rail {
+    display: none;
   }
 }
 

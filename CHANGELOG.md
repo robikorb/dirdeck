@@ -5,6 +5,15 @@ after the first stable release.
 
 ## Unreleased
 
+### Added
+
+- **Browser upload.** Drag files onto a pane or use the toolbar button. Uploads
+  stream straight to disk with no server-side buffering, run one at a time with
+  per-file progress and cancellation, and offer skip, keep both, replace, and
+  keep-both-for-all on a name conflict. Bytes land in a staging file and are
+  promoted with a single rename, so a dropped connection never leaves partial
+  data under the real name. Folder upload is not included.
+
 ### Fixed
 
 - `scripts/backup.sh` no longer archives the wrong volume. It reads

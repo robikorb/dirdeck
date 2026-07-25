@@ -128,8 +128,25 @@ with SQLite persistence.
 Fixtures and automated tests must use disposable directories only — never real
 user storage.
 
-Trash, synchronization, uploads, arbitrary archives, and terminal access are
-outside the initial implementation.
+## Upload safety
+
+Uploads are untrusted input arriving under a client-chosen name.
+
+- The name is validated as a single path component: separators, `.`, `..`, and
+  NUL bytes are rejected, and the reserved `.dirdeck-upload-` prefix is refused.
+- Read-only volumes reject uploads before the body is read.
+- Bytes are written to a staging file in the destination directory and promoted
+  with one rename. Partial data never appears under the final name.
+- A body shorter than `Content-Length` is treated as a failure; the staging file
+  is removed and nothing is promoted.
+- Without an explicit conflict policy an existing destination is refused rather
+  than overwritten. `RENAME_NOREPLACE` is used so a concurrent create cannot be
+  clobbered.
+- Declared sizes are checked against free space before writing.
+- Abandoned staging files are swept when the destination folder is next used.
+
+Trash, synchronization, arbitrary archives, and terminal access are outside the
+initial implementation.
 
 ## Permanent deletion
 
@@ -242,7 +259,9 @@ Before write operations are enabled, automated tests must cover:
   refusal, read-only enforcement, and the 500-item limit;
 - cross-filesystem move failure before and after destination completion;
 - hidden-file and beyond-display-limit directory copy/move behavior;
-- authentication, session expiry, CSRF, and login rate limiting.
+- authentication, session expiry, CSRF, and login rate limiting;
+- upload name validation, read-only rejection, conflict policies, truncated
+  bodies, zero-byte files, and staging-file cleanup.
 
 Phase 3 adds coverage for thumbnail byte/pixel/concurrency limits, preference
 path rejection, listing truncation, unavailable-mount responses, text preview

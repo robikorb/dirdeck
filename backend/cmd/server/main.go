@@ -87,7 +87,10 @@ func main() {
 		Addr:              cfg.ListenAddr,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       60 * time.Second,
+		// No overall read deadline: uploads stream arbitrarily large bodies and a
+		// fixed limit would kill them mid-transfer. ReadHeaderTimeout still bounds
+		// slow-header attacks.
+		ReadTimeout:       0,
 		WriteTimeout:      0, // streaming downloads + SSE
 		IdleTimeout:       120 * time.Second,
 	}

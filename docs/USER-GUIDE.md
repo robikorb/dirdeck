@@ -105,6 +105,18 @@ Rename is available only when exactly one non-symlink item is selected. Press
 F2 or use the pencil button. Rename stays inside the same parent directory and
 never overwrites an existing name.
 
+## Uploading files
+
+Drag files onto a pane, or use the upload button in the pane toolbar. Files go
+into the folder that pane is showing. Both controls are disabled on read-only
+volumes.
+
+Uploads run one at a time with per-file progress, and can be cancelled mid-file.
+If a name already exists you are asked what to do: skip it, keep both, replace
+it, or keep both for the rest of the batch.
+
+Folder upload is not supported yet; drop individual files.
+
 ## Editor
 
 Click the pencil action on a supported text or code file to open the Monaco

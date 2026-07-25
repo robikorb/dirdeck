@@ -421,3 +421,69 @@ export function formatSpeed(bps: number): string {
   if (!bps || bps < 1) return '—'
   return `${formatSize(bps)}/s`
 }
+
+export type UploadOutcome = {
+  name: string
+  skipped: boolean
+  conflict: boolean
+  meta?: FileMeta
+}
+
+export type UploadConflictAction = 'skip' | 'replace' | 'rename'
+
+/**
+ * Uploads one file with progress. XHR rather than fetch: fetch still has no
+ * upload progress event, and per-file progress is the whole point here.
+ * Returns an abort function alongside the promise so a queue can cancel.
+ */
+export function uploadFile(
+  volumeId: string,
+  destDir: string,
+  file: File,
+  options: {
+    conflict?: UploadConflictAction
+    onProgress?: (loaded: number, total: number) => void
+  } = {},
+): { promise: Promise<UploadOutcome>; abort: () => void } {
+  const q = new URLSearchParams({ path: destDir, name: file.name })
+  if (options.conflict) q.set('conflict', options.conflict)
+  const xhr = new XMLHttpRequest()
+
+  const promise = new Promise<UploadOutcome>((resolve, reject) => {
+    xhr.open('POST', `/api/volumes/${encodeURIComponent(volumeId)}/upload?${q}`)
+    xhr.withCredentials = true
+    if (csrfToken) xhr.setRequestHeader('X-CSRF-Token', csrfToken)
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream')
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) options.onProgress?.(event.loaded, event.total)
+    }
+    xhr.onload = () => {
+      let payload: { name?: string; skipped?: boolean; conflict?: boolean; meta?: FileMeta; error?: string } = {}
+      try {
+        payload = JSON.parse(xhr.responseText)
+      } catch {
+        /* non-JSON error body */
+      }
+      if (xhr.status === 409) {
+        resolve({ name: payload.name ?? file.name, skipped: false, conflict: true })
+        return
+      }
+      if (xhr.status >= 400) {
+        reject(new Error(payload.error || xhr.statusText || 'upload failed'))
+        return
+      }
+      resolve({
+        name: payload.name ?? file.name,
+        skipped: Boolean(payload.skipped),
+        conflict: false,
+        meta: payload.meta,
+      })
+    }
+    xhr.onerror = () => reject(new Error('network error during upload'))
+    xhr.onabort = () => reject(new Error('upload cancelled'))
+    xhr.send(file)
+  })
+
+  return { promise, abort: () => xhr.abort() }
+}

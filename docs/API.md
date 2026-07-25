@@ -273,6 +273,39 @@ filled in once planning completes. Watch the event stream or re-read the job.
 Planning failures — including insufficient destination free space — surface as
 a `failed` job with `errorMessage`, not as an error status on this request.
 
+### Upload — `POST /api/volumes/{id}/upload`
+
+Streams one file into a destination directory. One request per file: the body is
+a plain stream with no multipart buffering, the browser reports per-file
+progress, and a cancelled request aborts exactly one file.
+
+| Query | Meaning |
+|---|---|
+| `path` | Destination directory, relative to the volume root (empty = root) |
+| `name` | File name only. Separators, dot segments, and NUL bytes are rejected |
+| `conflict` | `error` (default), `skip`, `replace`, or `rename` |
+
+Body: the raw file bytes. `Content-Length` is used for a free-space check before
+anything is written, and the written total must match it exactly.
+
+- Requires authentication and CSRF.
+- Read-only volumes return `403`.
+- `error` on an existing name returns `409` with `{"conflict": true}` and writes
+  nothing; the client can then re-send with an explicit policy.
+- `skip` returns `200` with `{"skipped": true}` and leaves the original.
+- `rename` appends a counter before the extension and returns the chosen name.
+- `replace` overwrites deliberately.
+- Insufficient free space returns `507` before any bytes are written.
+- Returns `201` with the resulting metadata.
+
+Bytes land in a `.dirdeck-upload-*` staging file in the destination directory and
+are promoted with a single rename, so partial data never appears under the real
+name. A truncated body removes the staging file and returns `400`. Abandoned
+staging files from a killed process are swept when the folder is next used as an
+upload destination.
+
+Folder upload and resumable chunked upload are not implemented.
+
 #### Resolve conflict — `POST /api/transfers/{id}/conflict`
 
 ```json

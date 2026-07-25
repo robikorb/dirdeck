@@ -1599,3 +1599,112 @@ input:focus-visible,
     flex-wrap: wrap;
   }
 }
+
+/* ---- Upload ---------------------------------------------------------- */
+
+.pane-body.drop-active {
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.drop-hint {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  background: var(--bg-panel-strong);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.upload-strip {
+  border-top: 1px solid var(--border);
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 132px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+.upload-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.upload-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+
+.upload-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 120ms linear;
+}
+
+.upload-status {
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.upload-done .upload-status {
+  color: #86e39b;
+}
+
+.upload-error .upload-status {
+  color: var(--danger);
+}
+
+.upload-conflict {
+  border-top: 1px solid var(--border);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  background: var(--bg-panel-strong);
+}
+
+.upload-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.upload-conflict-actions button {
+  border: 1px solid var(--border);
+  background: var(--bg-panel-strong);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.upload-conflict-actions button:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+}

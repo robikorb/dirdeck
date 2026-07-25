@@ -23,6 +23,7 @@ import {
   StarOff,
   Square,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react'
 import {
@@ -41,6 +42,7 @@ import {
   getSession,
   isImagePath,
   isEditablePath,
+  uploadFile,
   isTextPreviewablePath,
   listDir,
   listFavorites,
@@ -73,6 +75,7 @@ import type {
   FileMeta,
   RecentLocation,
   TransferJob,
+  UploadConflictAction,
   Volume,
 } from './api'
 
@@ -225,6 +228,15 @@ function Thumb({
   )
 }
 
+type UploadItem = {
+  id: string
+  name: string
+  loaded: number
+  total: number
+  status: 'pending' | 'uploading' | 'done' | 'skipped' | 'error'
+  error?: string
+}
+
 function Pane({
   label,
   paneId,
@@ -269,6 +281,12 @@ function Pane({
     y: number
     entry: DirEntry
   } | null>(null)
+  const [uploads, setUploads] = useState<UploadItem[]>([])
+  const [dragActive, setDragActive] = useState(false)
+  const [uploadConflict, setUploadConflict] = useState<{ name: string; resolve: (a: UploadConflictAction | 'cancel', all: boolean) => void } | null>(null)
+  const uploadAllPolicy = useRef<UploadConflictAction | null>(null)
+  const uploadAbort = useRef<(() => void) | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const paneBodyRef = useRef<HTMLDivElement>(null)
   const scrollFrameRef = useRef<number | null>(null)
   const [viewport, setViewport] = useState({ scrollTop: 0, width: 0, height: 0 })
@@ -509,6 +527,95 @@ function Pane({
     Math.min(state.entries.length, gridEndRow * gridColumns),
   )
 
+  const writable = Boolean(volume && !volume.readOnly && volume.available)
+
+  // Uploads run one at a time. A parallel queue would saturate a NAS link and
+  // makes per-file progress meaningless.
+  const runUploads = useCallback(async (files: File[]) => {
+    if (!writable || files.length === 0) return
+    uploadAllPolicy.current = null
+    const queued: UploadItem[] = files.map((f, i) => ({
+      id: `${Date.now()}-${i}-${f.name}`,
+      name: f.name,
+      loaded: 0,
+      total: f.size,
+      status: 'pending',
+    }))
+    setUploads(queued)
+
+    for (let i = 0; i < files.length; i += 1) {
+      const file = files[i]
+      const item = queued[i]
+      const patch = (fields: Partial<UploadItem>) =>
+        setUploads((list) => list.map((u) => (u.id === item.id ? { ...u, ...fields } : u)))
+
+      let conflictAction: UploadConflictAction | undefined = uploadAllPolicy.current ?? undefined
+      for (;;) {
+        patch({ status: 'uploading' })
+        try {
+          const { promise, abort } = uploadFile(state.volumeId, state.path, file, {
+            conflict: conflictAction,
+            onProgress: (loaded, total) => patch({ loaded, total }),
+          })
+          uploadAbort.current = abort
+          const result = await promise
+          uploadAbort.current = null
+
+          if (result.conflict) {
+            const decision = await new Promise<{ action: UploadConflictAction | 'cancel'; all: boolean }>(
+              (resolve) => {
+                setUploadConflict({
+                  name: file.name,
+                  resolve: (action, all) => {
+                    setUploadConflict(null)
+                    resolve({ action, all })
+                  },
+                })
+              },
+            )
+            if (decision.action === 'cancel') {
+              patch({ status: 'error', error: 'cancelled' })
+              break
+            }
+            if (decision.all) uploadAllPolicy.current = decision.action
+            conflictAction = decision.action
+            continue
+          }
+          patch({ status: result.skipped ? 'skipped' : 'done', loaded: file.size })
+        } catch (err) {
+          uploadAbort.current = null
+          patch({ status: 'error', error: err instanceof Error ? err.message : 'upload failed' })
+        }
+        break
+      }
+    }
+
+    onChange({ ...state, reloadToken: state.reloadToken + 1 })
+    window.setTimeout(() => setUploads((list) => (list.every((u) => u.status !== 'uploading') ? [] : list)), 2500)
+  }, [writable, state, onChange])
+
+  function onDragOver(event: React.DragEvent) {
+    if (!writable || !Array.from(event.dataTransfer.types).includes('Files')) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+    setDragActive(true)
+  }
+
+  function onDragLeave(event: React.DragEvent) {
+    if (event.currentTarget.contains(event.relatedTarget as Node)) return
+    setDragActive(false)
+  }
+
+  function onDrop(event: React.DragEvent) {
+    if (!writable) return
+    event.preventDefault()
+    setDragActive(false)
+    onActivate()
+    // Directory entries arrive as zero-byte files; folder upload is a later feature.
+    const files = Array.from(event.dataTransfer.files).filter((f) => f.size > 0 || f.type !== '')
+    void runUploads(files)
+  }
+
   function handlePaneScroll(event: React.UIEvent<HTMLDivElement>) {
     const scrollTop = event.currentTarget.scrollTop
     if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current)
@@ -542,6 +649,27 @@ function Pane({
           >
             <RefreshCw size={16} />
           </button>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Upload files"
+            title={writable ? 'Upload files into this folder' : 'Volume is read-only'}
+            disabled={!writable}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload size={16} />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            hidden
+            onChange={(event) => {
+              const files = Array.from(event.target.files ?? [])
+              event.target.value = ''
+              void runUploads(files)
+            }}
+          />
           <button
             type="button"
             className="icon-btn"
@@ -607,7 +735,20 @@ function Pane({
         ))}
         {volume?.readOnly ? <span className="muted"> · read-only</span> : null}
       </div>
-      <div ref={paneBodyRef} className="pane-body" onScroll={handlePaneScroll}>
+      <div
+        ref={paneBodyRef}
+        className={`pane-body${dragActive ? ' drop-active' : ''}`}
+        onScroll={handlePaneScroll}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+      >
+        {dragActive ? (
+          <div className="drop-hint" role="status">
+            <Upload size={22} aria-hidden />
+            <span>Drop files into {state.path || volume?.name}</span>
+          </div>
+        ) : null}
         {state.loading ? <p className="muted">Loading…</p> : null}
         {state.error ? (
           <div className="pane-error">
@@ -768,6 +909,51 @@ function Pane({
           </div>
         ) : null}
       </div>
+      {uploads.length > 0 ? (
+        <div className="upload-strip" role="status" aria-label="Upload progress">
+          {uploads.map((u) => (
+            <div key={u.id} className={`upload-row upload-${u.status}`}>
+              <span className="upload-name" title={u.name}>{u.name}</span>
+              {u.status === 'uploading' ? (
+                <span className="upload-bar">
+                  <span
+                    className="upload-bar-fill"
+                    style={{ width: `${u.total ? Math.round((u.loaded / u.total) * 100) : 0}%` }}
+                  />
+                </span>
+              ) : null}
+              <span className="upload-status">
+                {u.status === 'done'
+                  ? 'done'
+                  : u.status === 'skipped'
+                    ? 'skipped'
+                    : u.status === 'error'
+                      ? (u.error ?? 'failed')
+                      : u.status === 'uploading'
+                        ? `${formatSize(u.loaded)} / ${formatSize(u.total)}`
+                        : 'queued'}
+              </span>
+              {u.status === 'uploading' ? (
+                <button type="button" className="text-btn" onClick={() => uploadAbort.current?.()}>
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {uploadConflict ? (
+        <div className="upload-conflict" role="alertdialog" aria-label="Upload conflict">
+          <strong>{uploadConflict.name} already exists</strong>
+          <div className="upload-conflict-actions">
+            <button type="button" onClick={() => uploadConflict.resolve('skip', false)}>Skip</button>
+            <button type="button" onClick={() => uploadConflict.resolve('rename', false)}>Keep both</button>
+            <button type="button" className="dialog-danger" onClick={() => uploadConflict.resolve('replace', false)}>Replace</button>
+            <button type="button" className="text-btn" onClick={() => uploadConflict.resolve('rename', true)}>Keep both for all</button>
+            <button type="button" className="text-btn dialog-cancel" onClick={() => uploadConflict.resolve('cancel', false)}>Cancel</button>
+          </div>
+        </div>
+      ) : null}
       <div className="pane-footer">
         <span>
           {selectedEntries.length > 0

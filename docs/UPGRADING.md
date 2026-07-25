@@ -38,8 +38,12 @@ legacy `LGFM_BIND_ADDR=0.0.0.0` would be silently ignored and the application
 would drop back to localhost, cutting off network access after an upgrade.
 
 To migrate at your own pace, rename the variables in `.env` from `LGFM_` to
-`DIRDECK_` and restart. The deprecation notices tell you exactly which names are
-still legacy:
+`DIRDECK_` and restart.
+
+With a Compose install you will not see deprecation notices: Compose resolves
+`.env` itself and always passes `DIRDECK_*` into the container, so the
+application never sees a legacy name. The notices appear only when `LGFM_*` is
+set directly in the container environment, for example with a bare `docker run`:
 
 ```text
 config: LGFM_BIND_ADDR is deprecated, rename it to DIRDECK_BIND_ADDR
@@ -69,6 +73,18 @@ Compose by hand in a source checkout, do the same:
 ```bash
 docker compose -f compose.build.yml -f compose.override.yml up -d --build
 ```
+
+**The update that crosses this change fails once.** `scripts/update.sh` pulls the
+new files while the old copy of itself is still running, so it reaches the
+Compose step without knowing about `compose.build.yml` and stops with:
+
+```text
+service "file-manager" has neither an image nor a build context specified
+```
+
+Nothing is broken and the application keeps running on the previous image. Run
+`./scripts/update.sh` a second time; the new script is on disk by then and
+completes normally.
 
 Your project name, containers, state volume, credentials, and volume registry
 are unchanged. Nothing is migrated.

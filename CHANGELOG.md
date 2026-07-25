@@ -16,6 +16,20 @@ after the first stable release.
 
 ### Added
 
+- **Prebuilt multi-architecture images on GHCR.** Installing no longer compiles
+  Go, npm, and Monaco locally. A release workflow publishes
+  `ghcr.io/robikorb/dirdeck` for `linux/amd64` and `linux/arm64` with SBOM and
+  build provenance; `latest` moves only for stable tags.
+- **Zero-configuration install.** `compose.yml` is self-contained: download it,
+  point one bind mount at your storage, and start. No clone, no build, no config
+  files. Source builds moved to `compose.build.yml`.
+- **Automatic volume discovery.** Every directory bind-mounted under
+  `/mnt/volumes/` is registered on startup, read-only until its name is listed
+  in `DIRDECK_WRITABLE`. Mounting a volumes file still takes precedence.
+- **First-run administrator.** With no credential files mounted, a 24 character
+  password is generated once and printed to the container log. Only the Argon2id
+  hash is stored, and a password is generated only when no administrator exists,
+  so restarts never reset it.
 - Configurable login throttling, session lifetime, host bind address, and backup
   retention through documented environment variables.
 - Graceful HTTP and transfer-worker shutdown for container restarts.

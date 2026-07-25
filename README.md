@@ -38,7 +38,62 @@ in SQLite inside a persistent Docker volume.
 
 ## Quick start
 
-Requirements: Docker Engine or Docker Desktop and Docker Compose v2.
+Requirements: Docker Engine or Docker Desktop with Compose v2. Nothing else —
+no Git, no Go, no Node, no build.
+
+```bash
+mkdir dirdeck && cd dirdeck
+curl -O https://raw.githubusercontent.com/robikorb/dirdeck/main/compose.yml
+```
+
+Open `compose.yml` and point the mount at your storage:
+
+```yaml
+    volumes:
+      - /srv/media:/mnt/volumes/media      # <- your folder or disk
+      - dirdeck-data:/var/lib/file-manager
+```
+
+Then start it and read the generated password:
+
+```bash
+docker compose up -d
+docker compose logs dirdeck | grep -A5 "administrator account"
+```
+
+```text
+│ DirDeck created its first administrator account.         │
+│   username: admin                                        │
+│   password: iDKKmue2kuGRvjUYP5eUxnqx                     │
+```
+
+Open [http://127.0.0.1:3002](http://127.0.0.1:3002) and sign in. The password is
+printed once and only its Argon2id hash is stored, so save it now.
+
+Every directory you mount under `/mnt/volumes/` shows up automatically — the
+name after `/mnt/volumes/` is what you see in the sidebar. No config file, no
+restart dance.
+
+## Making a volume writable
+
+**Every volume starts read-only.** Browse it first and confirm you are looking
+at the right disk. Only then opt in:
+
+```yaml
+    environment:
+      DIRDECK_WRITABLE: "media"      # comma-separated, or "*" for all
+```
+
+```bash
+docker compose up -d
+```
+
+This is deliberate. DirDeck can permanently delete files, and a typo in a bind
+mount should cost you nothing.
+
+## Building from source
+
+Contributors and anyone who prefers not to pull an image:
 
 ```bash
 git clone https://github.com/robikorb/dirdeck.git
@@ -46,61 +101,9 @@ cd dirdeck
 ./setup.sh
 ```
 
-`setup.sh`:
-
-1. creates a local `.env`;
-2. asks for the initial administrator name and password;
-3. writes the credentials into gitignored, mode `0600` secret files;
-4. creates a disposable example volume configuration;
-5. builds and starts the stack;
-6. waits for the readiness check.
-
-The default interface is available at
-[http://127.0.0.1:3002](http://127.0.0.1:3002). Change `DIRDECK_PORT` in `.env`
-before startup if that port is already in use.
-
-The default bind address is `127.0.0.1`. For trusted LAN or VPN access, set
-`DIRDECK_BIND_ADDR=0.0.0.0` explicitly and protect the service with host firewall
-rules. Prefer an HTTPS reverse proxy and set `DIRDECK_SECURE_COOKIE=true`.
-
-The password is never baked into the image or committed to Git. On startup it
-is hashed with Argon2id before being stored in SQLite.
-
-## Adding storage
-
-Storage access requires both:
-
-1. a Docker bind mount in the local `compose.override.yml`;
-2. a matching entry in `config/volumes.yaml`.
-
-Start every real disk or network share as read-only:
-
-```yaml
-services:
-  file-manager:
-    volumes:
-      - type: bind
-        source: /path/on/the/host
-        target: /mnt/volumes/media
-        read_only: true
-```
-
-```yaml
-volumes:
-  - id: media
-    name: Media
-    path: /mnt/volumes/media
-    readOnly: true
-    showHiddenFiles: false
-    thumbnails: true
-```
-
-After read-only browsing and preview tests pass, remove `read_only: true` from
-the Docker mount and change the registry entry to `readOnly: false`. See
-[docs/STORAGE-MOUNTS.md](docs/STORAGE-MOUNTS.md) for the complete procedure.
-
-`compose.override.yml`, `config/volumes.yaml`, `.env`, credentials, and backups
-are local and gitignored. Updating the application does not replace them.
+That compiles the Go binary and the frontend, prompts for credentials, and uses
+`compose.build.yml` with disposable fixtures. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Updating without losing settings
 

@@ -1,61 +1,68 @@
-# DirDeck source-build Compose stack.
+# DirDeck — self-hosted dual-pane file manager.
 #
-# Every setting reads DIRDECK_* first and falls back to the pre-rename LGFM_*
-# name, so .env files written before the rename keep working untouched. Compose
-# interpolation cannot see the application's own alias handling, so each
-# fallback has to be spelled out here as well.
+#   mkdir dirdeck && cd dirdeck
+#   curl -O https://raw.githubusercontent.com/robikorb/dirdeck/main/compose.yml
+#   # edit the volumes: section below to point at your storage
+#   docker compose up -d
+#   docker compose logs dirdeck | grep -A5 "administrator account"
 #
-# The project name is intentionally left to Compose's directory default: pinning
-# it would orphan the containers of installations that predate the rename.
+# This file is self-contained: no clone, no build, no config files. Every
+# directory you bind-mount under /mnt/volumes/ appears in the app automatically.
 #
-# The bundled mounts expose disposable fixtures only. Add explicitly approved
-# host paths using the read-only-first procedure in docs/STORAGE-MOUNTS.md.
+# Volumes are READ-ONLY until you opt in. Browse first, confirm you are looking
+# at the right disk, then add its name to DIRDECK_WRITABLE and restart.
+#
+# Contributors building from source: use compose.build.yml instead.
+
+name: dirdeck
 
 services:
-  file-manager:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "${DIRDECK_BIND_ADDR:-${LGFM_BIND_ADDR:-127.0.0.1}}:${DIRDECK_PORT:-${LGFM_PORT:-3002}}:8080"
+  dirdeck:
+    image: ghcr.io/robikorb/dirdeck:${DIRDECK_VERSION:-latest}
+    container_name: dirdeck
     restart: unless-stopped
     stop_grace_period: 30s
+
+    ports:
+      # Localhost only by default. Read docs/SECURITY.md before widening this:
+      # plain HTTP sends the password and session cookie in the clear.
+      - "${DIRDECK_BIND_ADDR:-${LGFM_BIND_ADDR:-127.0.0.1}}:${DIRDECK_PORT:-${LGFM_PORT:-3002}}:8080"
+
     environment:
       DIRDECK_LISTEN_ADDR: ":8080"
-      DIRDECK_DATA_DIR: /var/lib/file-manager
-      DIRDECK_VOLUMES_FILE: /etc/dirdeck/volumes.yaml
-      DIRDECK_ADMIN_USERNAME_FILE: /run/secrets/admin_username
-      DIRDECK_ADMIN_PASSWORD_FILE: /run/secrets/admin_password
+
+      # Comma-separated volume names that may be written to; "*" allows all.
+      # Anything not listed stays read-only.
+      DIRDECK_WRITABLE: "${DIRDECK_WRITABLE:-}"
+
+      # Set true when a reverse proxy terminates HTTPS in front of DirDeck.
       DIRDECK_SECURE_COOKIE: "${DIRDECK_SECURE_COOKIE:-${LGFM_SECURE_COOKIE:-false}}"
+
       DIRDECK_LOGIN_RATE_LIMIT_MAX: "${DIRDECK_LOGIN_RATE_LIMIT_MAX:-${LGFM_LOGIN_RATE_LIMIT_MAX:-10}}"
       DIRDECK_LOGIN_RATE_LIMIT_SEC: "${DIRDECK_LOGIN_RATE_LIMIT_SEC:-${LGFM_LOGIN_RATE_LIMIT_SEC:-60}}"
       DIRDECK_SESSION_TTL_HOURS: "${DIRDECK_SESSION_TTL_HOURS:-${LGFM_SESSION_TTL_HOURS:-12}}"
+
+      # Ownership for anything DirDeck creates. On Linux use `id -u` / `id -g`.
       PUID: "${PUID:-1000}"
       PGID: "${PGID:-1000}"
       UMASK: "${UMASK:-022}"
+
     volumes:
-      - type: bind
-        source: ./config/volumes.yaml
-        target: /etc/dirdeck/volumes.yaml
-        read_only: true
-      - type: bind
-        source: ./secrets/admin_username
-        target: /run/secrets/admin_username
-        read_only: true
-      - type: bind
-        source: ./secrets/admin_password
-        target: /run/secrets/admin_password
-        read_only: true
-      - type: bind
-        source: ./fixtures/ro
-        target: /mnt/volumes/fixture-ro
-        read_only: true
-      - type: bind
-        source: ./fixtures/rw
-        target: /mnt/volumes/fixture-rw
-      - type: volume
-        source: app-state
-        target: /var/lib/file-manager
+      # ----------------------------------------------------------------
+      # YOUR STORAGE — add one line per folder or disk you want to manage.
+      # The name after /mnt/volumes/ is what appears in the sidebar.
+      #
+      #   - /srv/media:/mnt/volumes/media
+      #   - /mnt/photos:/mnt/volumes/photos
+      #
+      # Never mount the Docker socket, /, or system directories here.
+      # ----------------------------------------------------------------
+      - ${DIRDECK_FIRST_MOUNT:-./files}:/mnt/volumes/files
+
+      # Application database: sessions, favorites, transfer history.
+      # Deleting this volume resets the application.
+      - dirdeck-data:/var/lib/file-manager
+
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
       interval: 10s
@@ -64,5 +71,5 @@ services:
       start_period: 15s
 
 volumes:
-  app-state:
-    name: "${DIRDECK_DATA_VOLUME:-${LGFM_DATA_VOLUME:-liquid-glass-file-manager_app-state}}"
+  dirdeck-data:
+    name: "${DIRDECK_DATA_VOLUME:-${LGFM_DATA_VOLUME:-dirdeck-data}}"

@@ -10,6 +10,14 @@ if [ -d "$docker_desktop_bin" ]; then
   export PATH
 fi
 
+# Source installs combine the build stack with the local host-specific override.
+# The default compose.yml is the standalone image-based stack and must not be
+# merged with an override that targets the source service name.
+COMPOSE_FILES="-f compose.build.yml"
+if [ -f compose.override.yml ]; then
+  COMPOSE_FILES="$COMPOSE_FILES -f compose.override.yml"
+fi
+
 umask 077
 mkdir -p backups
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
@@ -19,14 +27,14 @@ state_archive="$project_dir/backups/lgfm-state-$timestamp.tar.gz"
 config_archive="$project_dir/backups/lgfm-config-$timestamp.tar.gz"
 
 was_running=false
-if [ -n "$(docker compose ps -q file-manager 2>/dev/null)" ]; then
+if [ -n "$(docker compose $COMPOSE_FILES ps -q file-manager 2>/dev/null)" ]; then
   was_running=true
-  docker compose stop file-manager >/dev/null
+  docker compose $COMPOSE_FILES stop file-manager >/dev/null
 fi
 
 restart_app() {
   if [ "$was_running" = true ]; then
-    docker compose start file-manager >/dev/null 2>&1 || true
+    docker compose $COMPOSE_FILES start file-manager >/dev/null 2>&1 || true
   fi
 }
 trap restart_app EXIT INT TERM

@@ -68,6 +68,45 @@ func New(database *sql.DB, secureCookie bool, sessionTTLHours, rateLimitMax, rat
 	}
 }
 
+// HasAdmin reports whether an administrator account already exists.
+// Used to decide whether a generated first-run password is needed: regenerating
+// one on every start would silently reset the operator's password.
+func (s *Service) HasAdmin() (bool, error) {
+	var count int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM users WHERE id = 1`).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// GeneratePassword returns a random, human-transcribable password for
+// zero-configuration first runs. The alphabet omits characters that are easy to
+// confuse when read out of container logs.
+func GeneratePassword() (string, error) {
+	const alphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+	const length = 24
+	out := make([]byte, length)
+	buf := make([]byte, length)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	// Rejection-free: 56 divides evenly enough that modulo bias is negligible
+	// for a 24-character secret, but draw extra bytes to keep it uniform.
+	for i := range out {
+		b := make([]byte, 1)
+		for {
+			if _, err := rand.Read(b); err != nil {
+				return "", err
+			}
+			if int(b[0]) < 256-(256%len(alphabet)) {
+				out[i] = alphabet[int(b[0])%len(alphabet)]
+				break
+			}
+		}
+	}
+	return string(out), nil
+}
+
 // BootstrapAdmin ensures a single admin user exists from secret files.
 func (s *Service) BootstrapAdmin(username, password string) error {
 	if username == "" || password == "" {

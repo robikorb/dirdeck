@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -44,24 +46,15 @@ func main() {
 	}
 	defer database.Close()
 
-	username, err := config.ReadSecretFile(cfg.AdminUsernameFile)
-	if err != nil {
-		log.Fatalf("admin username: %v", err)
-	}
-	password, err := config.ReadSecretFile(cfg.AdminPasswordFile)
-	if err != nil {
-		log.Fatalf("admin password: %v", err)
-	}
-
 	authSvc := auth.New(database, cfg.SecureCookie, cfg.SessionTTLHours, cfg.LoginRateLimitMax, cfg.LoginRateLimitSec)
-	if err := authSvc.BootstrapAdmin(username, password); err != nil {
+	if err := bootstrapAdmin(authSvc, cfg); err != nil {
 		log.Fatalf("bootstrap admin: %v", err)
 	}
 	if err := authSvc.PruneSessions(); err != nil {
 		log.Fatalf("prune sessions: %v", err)
 	}
 
-	reg, err := volumes.Load(cfg.VolumesFile)
+	reg, err := loadVolumes(cfg)
 	if err != nil {
 		log.Fatalf("volumes: %v", err)
 	}
@@ -133,6 +126,76 @@ func main() {
 	if err := xfer.Shutdown(transferCtx); err != nil {
 		log.Printf("transfer shutdown: %v", err)
 	}
+}
+
+// bootstrapAdmin prefers operator-managed secret files. When none are present —
+// the zero-configuration `docker run` path — it generates a strong password on
+// the very first start and prints it once. Only the Argon2id hash is stored, and
+// a password is generated only when no administrator exists yet, so restarting
+// never resets a password the operator has already been given.
+func bootstrapAdmin(authSvc *auth.Service, cfg config.Config) error {
+	username, userErr := config.ReadSecretFile(cfg.AdminUsernameFile)
+	password, passErr := config.ReadSecretFile(cfg.AdminPasswordFile)
+
+	if userErr == nil && passErr == nil {
+		return authSvc.BootstrapAdmin(username, password)
+	}
+	if passErr != nil && !errors.Is(passErr, os.ErrNotExist) {
+		return fmt.Errorf("admin password: %w", passErr)
+	}
+	if userErr != nil && !errors.Is(userErr, os.ErrNotExist) {
+		return fmt.Errorf("admin username: %w", userErr)
+	}
+
+	if username == "" {
+		username = "admin"
+	}
+	exists, err := authSvc.HasAdmin()
+	if err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
+
+	generated, err := auth.GeneratePassword()
+	if err != nil {
+		return err
+	}
+	if err := authSvc.BootstrapAdmin(username, generated); err != nil {
+		return err
+	}
+	log.Printf("┌──────────────────────────────────────────────────────────┐")
+	log.Printf("│ DirDeck created its first administrator account.         │")
+	log.Printf("│ This password is shown once and is not stored anywhere.  │")
+	log.Printf("│                                                          │")
+	log.Printf("│   username: %-44s │", username)
+	log.Printf("│   password: %-44s │", generated)
+	log.Printf("└──────────────────────────────────────────────────────────┘")
+	return nil
+}
+
+// loadVolumes uses the configured registry when one exists and otherwise
+// discovers whatever is mounted under /mnt/volumes, so a plain `docker run`
+// with one bind mount is a complete installation.
+func loadVolumes(cfg config.Config) (*volumes.Registry, error) {
+	if _, err := os.Stat(cfg.VolumesFile); err == nil {
+		return volumes.Load(cfg.VolumesFile)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	reg, err := volumes.Discover(cfg.WritableVolumes)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range reg.Public() {
+		access := "read-only"
+		if !v.ReadOnly {
+			access = "read-write"
+		}
+		log.Printf("volume discovered: %s (%s)", v.ID, access)
+	}
+	return reg, nil
 }
 
 func loadStatic(dir string) (fs.FS, error) {

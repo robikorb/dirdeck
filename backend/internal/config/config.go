@@ -25,6 +25,7 @@ type Config struct {
 	AdminPasswordFile string
 	SecureCookie      bool
 	StaticDir         string
+	WritableVolumes   []string
 	LoginRateLimitMax int
 	LoginRateLimitSec int
 	SessionTTLHours   int
@@ -45,6 +46,7 @@ func Load() (Config, error) {
 		AdminPasswordFile: envOr("ADMIN_PASSWORD_FILE", "./secrets/admin_password"),
 		SecureCookie:      envOr("SECURE_COOKIE", "false") == "true",
 		StaticDir:         envOr("STATIC_DIR", ""),
+		WritableVolumes:   splitList(envOr("WRITABLE", "")),
 		LoginRateLimitMax: envIntOr("LOGIN_RATE_LIMIT_MAX", 10),
 		LoginRateLimitSec: envIntOr("LOGIN_RATE_LIMIT_SEC", 60),
 		SessionTTLHours:   envIntOr("SESSION_TTL_HOURS", 12),
@@ -66,6 +68,21 @@ func lookupEnv(name string) (string, bool) {
 		return v, true
 	}
 	return "", false
+}
+
+// splitList parses a comma-separated setting such as DIRDECK_WRITABLE=media,docs.
+func splitList(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func envIntOr(name string, fallback int) int {

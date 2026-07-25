@@ -81,6 +81,50 @@ restart with unchanged secret files preserves sessions.
 Do not place real passwords in `compose.yml`, image build arguments, command
 line flags, or Git.
 
+## Zero-configuration install
+
+The published image needs no config files. Two things are derived automatically:
+
+**Volumes.** If no volumes file is present, DirDeck scans `/mnt/volumes/` and
+registers every directory it finds there. The directory name becomes the volume
+id and the sidebar label. Discovered volumes are **read-only** until listed in
+`DIRDECK_WRITABLE`, so a wrong bind mount cannot cost you data. Mounting a
+volumes file at `DIRDECK_VOLUMES_FILE` disables discovery and gives you full
+control per volume — see [STORAGE-MOUNTS.md](STORAGE-MOUNTS.md).
+
+**Administrator.** If no secret files are mounted, DirDeck generates a 24
+character password on the very first start and prints it once:
+
+```bash
+docker compose logs dirdeck | grep -A5 "administrator account"
+```
+
+Only the Argon2id hash is stored, so the password cannot be recovered later. A
+password is generated only when no administrator exists yet — restarting or
+upgrading never resets it.
+
+### If you lose the generated password
+
+There is no self-service reset yet. Mount credential files and restart; they
+take precedence and overwrite the stored hash:
+
+```bash
+printf 'admin\n'          > admin_username
+printf 'your-new-password\n' > admin_password
+chmod 600 admin_username admin_password
+```
+
+```yaml
+    volumes:
+      - ./admin_username:/run/secrets/admin_username:ro
+      - ./admin_password:/run/secrets/admin_password:ro
+    environment:
+      DIRDECK_ADMIN_USERNAME_FILE: /run/secrets/admin_username
+      DIRDECK_ADMIN_PASSWORD_FILE: /run/secrets/admin_password
+```
+
+Rotating credentials this way revokes all existing sessions.
+
 ## Environment
 
 Edit `.env`:

@@ -55,6 +55,24 @@ The transfer staging prefix `.lgfm-partial-` and the editor temporary prefix
 `.lgfm-edit-` are intentionally unchanged. Renaming them would leave partial
 files from interrupted jobs unrecognised by the cleanup routine.
 
+### Source installs must now name the build stack
+
+`compose.yml` is now the standalone, image-based stack for operators, and the
+source build moved to `compose.build.yml`. Compose auto-merges a local
+`compose.override.yml` into the default file only, so an override written for
+the source service name would break the standalone stack.
+
+`setup.sh`, `scripts/update.sh`, and `scripts/backup.sh` handle this for you —
+they pass `-f compose.build.yml` plus your override when one exists. If you drive
+Compose by hand in a source checkout, do the same:
+
+```bash
+docker compose -f compose.build.yml -f compose.override.yml up -d --build
+```
+
+Your project name, containers, state volume, credentials, and volume registry
+are unchanged. Nothing is migrated.
+
 ### Upgrading to Unreleased
 
 **You will be signed out once.** Session identifiers are now stored as SHA-256
@@ -130,8 +148,8 @@ The `-v` flag deletes the application state volume.
 ```bash
 ./scripts/backup.sh
 git pull --ff-only
-docker compose up -d --build --remove-orphans
-docker compose ps
+docker compose -f compose.build.yml -f compose.override.yml up -d --build --remove-orphans
+docker compose -f compose.build.yml -f compose.override.yml ps
 curl -fsS http://127.0.0.1:${DIRDECK_PORT:-3002}/api/ready
 ```
 
@@ -139,7 +157,7 @@ curl -fsS http://127.0.0.1:${DIRDECK_PORT:-3002}/api/ready
 
 Keep the backup paths printed before an update.
 
-1. Stop the application with `docker compose down`.
+1. Stop the application with `docker compose -f compose.build.yml -f compose.override.yml down`.
 2. Check out the previous known-good Git tag.
 3. Do not run an older binary against a database already migrated by a newer
    incompatible release.
@@ -158,7 +176,7 @@ Use this only with an explicitly selected backup pair. The state destination
 must be a new empty Docker volume; do not extract over a running database.
 
 ```bash
-docker compose down
+docker compose -f compose.build.yml -f compose.override.yml down
 docker volume create liquid-glass-file-manager_app-state-restored
 docker run --rm \
   -v liquid-glass-file-manager_app-state-restored:/state \

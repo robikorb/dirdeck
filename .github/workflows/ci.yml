@@ -55,17 +55,17 @@ jobs:
           printf 'ci-admin\n' > secrets/admin_username
           printf 'ci-only-long-password\n' > secrets/admin_password
       - name: Validate Compose
-        run: docker compose config
+        run: docker compose -f compose.build.yml -f compose.override.yml config
       - name: Build container
-        run: docker compose build
+        run: docker compose -f compose.build.yml -f compose.override.yml build
       - name: Start and verify container
         run: |
-          docker compose up -d
+          docker compose -f compose.build.yml -f compose.override.yml up -d
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:3002/api/ready; then
               exit 0
             fi
             sleep 2
           done
-          docker compose logs file-manager
+          docker compose -f compose.build.yml -f compose.override.yml logs file-manager
           exit 1

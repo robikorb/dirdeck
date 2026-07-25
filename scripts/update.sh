@@ -10,6 +10,14 @@ if [ -d "$docker_desktop_bin" ]; then
   export PATH
 fi
 
+# Source installs combine the build stack with the local host-specific override.
+# The default compose.yml is the standalone image-based stack and must not be
+# merged with an override that targets the source service name.
+COMPOSE_FILES="-f compose.build.yml"
+if [ -f compose.override.yml ]; then
+  COMPOSE_FILES="$COMPOSE_FILES -f compose.override.yml"
+fi
+
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "Tracked files contain local changes. Commit or stash them before updating." >&2
   exit 1
@@ -22,10 +30,10 @@ echo "Updating source..."
 git pull --ff-only
 
 echo "Rebuilding and recreating the container..."
-docker compose up -d --build --remove-orphans
+docker compose $COMPOSE_FILES up -d --build --remove-orphans
 
 attempt=0
-until docker compose exec -T file-manager \
+until docker compose $COMPOSE_FILES exec -T file-manager \
   wget -qO- http://127.0.0.1:8080/api/ready >/dev/null 2>&1; do
   attempt=$((attempt + 1))
   if [ "$attempt" -ge 30 ]; then

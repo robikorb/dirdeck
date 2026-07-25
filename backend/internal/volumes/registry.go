@@ -67,6 +67,84 @@ func (r *Registry) Get(id string) (Volume, bool) {
 	return v, ok
 }
 
+// Discover builds a registry from the directories mounted under VolumesRoot.
+//
+// This is the zero-configuration path: bind-mount a host directory to
+// /mnt/volumes/<name> and it appears without writing a config file. Discovered
+// volumes are read-only unless their id is listed in writable, matching the
+// read-only-first procedure in docs/STORAGE-MOUNTS.md. Passing "*" makes every
+// discovered volume writable.
+func Discover(writable []string) (*Registry, error) {
+	root := filepath.Clean(VolumesRoot)
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", root, err)
+	}
+
+	allWritable := false
+	writableSet := make(map[string]struct{}, len(writable))
+	for _, id := range writable {
+		id = strings.TrimSpace(id)
+		if id == "*" {
+			allWritable = true
+			continue
+		}
+		if id != "" {
+			writableSet[id] = struct{}{}
+		}
+	}
+
+	reg := &Registry{byID: make(map[string]Volume), order: make([]Volume, 0, len(entries))}
+	for _, entry := range entries {
+		name := entry.Name()
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+		full := filepath.Join(root, name)
+		// Resolve so a symlinked mount still registers as a directory.
+		info, err := os.Stat(full)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		vol := Volume{
+			ID:              name,
+			Name:            displayName(name),
+			Path:            full,
+			ReadOnly:        true,
+			ShowHiddenFiles: false,
+			Thumbnails:      true,
+		}
+		if allWritable {
+			vol.ReadOnly = false
+		} else if _, ok := writableSet[name]; ok {
+			vol.ReadOnly = false
+		}
+		if err := validateVolume(vol); err != nil {
+			return nil, fmt.Errorf("discovered volume %q: %w", name, err)
+		}
+		if _, exists := reg.byID[vol.ID]; exists {
+			continue
+		}
+		reg.byID[vol.ID] = vol
+		reg.order = append(reg.order, vol)
+	}
+
+	if len(reg.order) == 0 {
+		return nil, fmt.Errorf("no directories found under %s: bind-mount at least one host folder there", root)
+	}
+	return reg, nil
+}
+
+// displayName turns a mount directory name into readable UI text.
+func displayName(id string) string {
+	cleaned := strings.NewReplacer("-", " ", "_", " ").Replace(id)
+	cleaned = strings.TrimSpace(cleaned)
+	if cleaned == "" {
+		return id
+	}
+	return strings.ToUpper(cleaned[:1]) + cleaned[1:]
+}
+
 // Load reads and validates a volumes YAML file.
 func Load(path string) (*Registry, error) {
 	raw, err := os.ReadFile(path)

@@ -13,6 +13,14 @@ if [ -d "$docker_desktop_bin" ]; then
   export PATH
 fi
 
+# Source installs combine the build stack with the local host-specific override.
+# The default compose.yml is the standalone image-based stack and must not be
+# merged with an override that targets the source service name.
+COMPOSE_FILES="-f compose.build.yml"
+if [ -f compose.override.yml ]; then
+  COMPOSE_FILES="$COMPOSE_FILES -f compose.override.yml"
+fi
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "Docker is required: https://docs.docker.com/engine/install/" >&2
   exit 1
@@ -94,16 +102,16 @@ if [ "$reuse_secrets" = false ]; then
   echo "Created local admin secret files."
 fi
 
-docker compose config >/dev/null
-docker compose up -d --build
+docker compose $COMPOSE_FILES config >/dev/null
+docker compose $COMPOSE_FILES up -d --build
 
 attempt=0
-until docker compose exec -T file-manager \
+until docker compose $COMPOSE_FILES exec -T file-manager \
   wget -qO- http://127.0.0.1:8080/api/ready >/dev/null 2>&1; do
   attempt=$((attempt + 1))
   if [ "$attempt" -ge 30 ]; then
     echo "The container started but did not become ready. Run:" >&2
-    echo "  docker compose logs file-manager" >&2
+    echo "  docker compose $COMPOSE_FILES logs file-manager" >&2
     exit 1
   fi
   sleep 2

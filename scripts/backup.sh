@@ -21,10 +21,28 @@ fi
 umask 077
 mkdir -p backups
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
-state_volume=$(sed -n 's/^DIRDECK_DATA_VOLUME=//p' .env 2>/dev/null | tail -n 1)
-state_volume=${state_volume:-liquid-glass-file-manager_app-state}
-state_archive="$project_dir/backups/lgfm-state-$timestamp.tar.gz"
-config_archive="$project_dir/backups/lgfm-config-$timestamp.tar.gz"
+# Read the current name first, then the pre-rename one. Installations created
+# before the DirDeck rename still pin LGFM_DATA_VOLUME, and silently falling
+# through to the default would archive the wrong volume.
+env_value() {
+  sed -n "s/^$1=//p" .env 2>/dev/null | tail -n 1
+}
+state_volume=$(env_value DIRDECK_DATA_VOLUME)
+[ -n "$state_volume" ] || state_volume=$(env_value LGFM_DATA_VOLUME)
+state_volume=${state_volume:-dirdeck-data}
+
+# `docker run -v name:/state` creates a missing volume instead of failing, which
+# would turn a wrong or misspelled name into a silent, empty "successful" backup.
+if ! docker volume inspect "$state_volume" >/dev/null 2>&1; then
+  echo "State volume '$state_volume' does not exist." >&2
+  echo "Refusing to write an empty backup. Check DIRDECK_DATA_VOLUME in .env" >&2
+  echo "against the existing volumes:" >&2
+  docker volume ls --format '  {{.Name}}' >&2
+  exit 1
+fi
+
+state_archive="$project_dir/backups/dirdeck-state-$timestamp.tar.gz"
+config_archive="$project_dir/backups/dirdeck-config-$timestamp.tar.gz"
 
 was_running=false
 if [ -n "$(docker compose $COMPOSE_FILES ps -q file-manager 2>/dev/null)" ]; then
@@ -56,16 +74,17 @@ LC_ALL=C tar -czf "$config_archive" \
   secrets/admin_password
 chmod 600 "$config_archive"
 
-retention=$(sed -n 's/^DIRDECK_BACKUP_RETENTION=//p' .env 2>/dev/null | tail -n 1)
+retention=$(env_value DIRDECK_BACKUP_RETENTION)
+[ -n "$retention" ] || retention=$(env_value LGFM_BACKUP_RETENTION)
 retention=${retention:-10}
 case "$retention" in
   ''|*[!0-9]*) retention=10 ;;
 esac
 if [ "$retention" -gt 0 ]; then
-  ls -1t "$project_dir"/backups/lgfm-state-*.tar.gz 2>/dev/null |
+  ls -1t "$project_dir"/backups/dirdeck-state-*.tar.gz "$project_dir"/backups/lgfm-state-*.tar.gz 2>/dev/null |
     awk -v keep="$retention" 'NR > keep' |
     while IFS= read -r old_state; do
-      old_config=$(printf '%s\n' "$old_state" | sed 's#/lgfm-state-#/lgfm-config-#')
+      old_config=$(printf '%s\n' "$old_state" | sed 's#-state-#-config-#')
       rm -f -- "$old_state" "$old_config"
     done
 fi

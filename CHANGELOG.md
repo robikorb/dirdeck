@@ -3,6 +3,17 @@
 All notable changes are recorded here. The project follows semantic versioning
 after the first stable release.
 
+## Unreleased
+
+### Fixed
+
+- `scripts/backup.sh` no longer archives the wrong volume. It reads
+  `DIRDECK_DATA_VOLUME`, falls back to the pre-rename `LGFM_DATA_VOLUME`, and
+  refuses to run when the named volume does not exist. Docker creates a missing
+  volume on demand, so a name that did not resolve previously produced an empty
+  archive and reported success. Backup retention now matches archives written
+  under either naming scheme.
+
 ## 0.2.0-rc.1 - 2026-07-25
 
 ### Changed

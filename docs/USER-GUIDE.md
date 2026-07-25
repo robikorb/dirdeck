@@ -6,14 +6,19 @@ Each pane has its own volume, folder, view mode, selection, and breadcrumb.
 Click inside a pane to make it active. Center buttons send the active selection
 to the opposite pane.
 
-Single-click selects. Double-click opens a folder or an editable text file.
-The Inspector shows metadata and previews for the focused item.
+Click a folder once to open it. Supported text and code files have a pencil
+button that opens the editor. The dedicated selector beside each list row or in
+the corner of each grid card adds or removes that item without opening it. The
+Inspector shows metadata and previews for the focused item.
 
 ## Multiple selection
 
 | Action | Result |
 |--------|--------|
-| Click | Replace the selection with one item |
+| Item selector | Add or remove one item without opening it |
+| Shift+item selector | Add a contiguous range from the anchor |
+| Click a file row or card | Replace the selection with that file |
+| Click a folder row or card | Open that folder |
 | Cmd/Ctrl+click | Add or remove one item |
 | Shift+click | Select a contiguous range from the anchor |
 | Cmd/Ctrl+Shift+click | Add a contiguous range |
@@ -102,7 +107,8 @@ never overwrites an existing name.
 
 ## Editor
 
-Double-click a supported text or code file to open the Monaco editor.
+Click the pencil action on a supported text or code file to open the Monaco
+editor.
 
 - maximum editable size is 2 MiB;
 - content must be valid UTF-8;

@@ -262,6 +262,36 @@ input:focus-visible,
   font-size: 13px;
   user-select: none;
   -webkit-user-select: none;
+  /* Fixed layout keeps every row exactly LIST_ROW_HEIGHT tall. Row virtualization
+     in App.tsx positions spacers from that constant, so a wrapping cell would
+     desynchronise the scroll offset. Keep both in sync. */
+  table-layout: fixed;
+}
+
+.list-table td {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.entry-date-heading {
+  width: 150px;
+}
+
+.entry-size-heading {
+  width: 92px;
+}
+
+/* Panes get much narrower once the layout stacks; give the name column back
+   the space instead of squeezing it to nothing. */
+@media (max-width: 1279px) {
+  .entry-date-heading {
+    width: 116px;
+  }
+
+  .entry-size-heading {
+    width: 76px;
+  }
 }
 
 .list-table th {
@@ -307,6 +337,51 @@ input:focus-visible,
 .entry-action-cell {
   width: 42px;
   text-align: right;
+}
+
+.entry-action-cell,
+.entry-select-cell {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.entry-select-heading,
+.entry-select-cell {
+  width: 34px;
+  padding-right: 0 !important;
+  text-align: center;
+}
+
+.entry-select-button {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.62;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease,
+    transform 120ms ease;
+}
+
+.entry-select-button:hover,
+.entry-select-button:focus-visible {
+  opacity: 1;
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.entry-select-button[aria-pressed='true'] {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.entry-select-button:active {
+  transform: scale(0.92);
 }
 
 .entry-edit-button {
@@ -386,6 +461,19 @@ input:focus-visible,
   position: absolute;
   top: 6px;
   right: 6px;
+}
+
+.grid-select-button {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
+}
+
+.grid-item:hover .grid-select-button,
+.grid-item.selected .grid-select-button,
+.grid-select-button:focus-visible {
+  opacity: 1;
 }
 
 .grid-item:hover .grid-edit-button,
@@ -763,6 +851,18 @@ input:focus-visible,
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.row-name > svg {
+  flex: 0 0 auto;
+}
+
+.row-name-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .pane-active {

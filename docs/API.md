@@ -263,8 +263,15 @@ Batch request:
 - Destination volume must not be read-only.
 - Move also requires a writable source volume (source is deleted after verify).
 - Exact same-path targets and destinations inside any source directory are rejected.
-- Copy returns `507` when reliable destination free space is below the planned byte total.
 - Returns `201` with the job object.
+
+Recursive source planning runs in the worker, not in this request, so a
+selection containing a huge tree does not hold the HTTP connection open. As a
+consequence `bytesTotal` and `filesTotal` are `0` in the `201` response and are
+filled in once planning completes. Watch the event stream or re-read the job.
+
+Planning failures — including insufficient destination free space — surface as
+a `failed` job with `errorMessage`, not as an error status on this request.
 
 #### Resolve conflict — `POST /api/transfers/{id}/conflict`
 

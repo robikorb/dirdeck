@@ -63,10 +63,37 @@ Browser refresh does **not** cancel server-side copy/move jobs. The UI
 re-subscribes to SSE and refreshes `GET /api/transfers` on reconnect. See
 [TRANSFERS.md](TRANSFERS.md).
 
-During a controlled container stop, the server cancels active workers, waits
-for their durable status/partial cleanup, and then exits within the configured
-Docker shutdown window. Startup reconciliation remains the fallback after a
-host crash or forced termination.
+### Controlled container stop
+
+`docker compose stop`, `restart`, and `./scripts/update.sh` send `SIGTERM`. The
+server then runs a three-step shutdown:
+
+1. Open transfer event streams are released. A browser tab holding an SSE
+   connection would otherwise keep the HTTP server busy for its whole deadline.
+2. The HTTP server stops accepting connections and drains in-flight requests
+   (up to 10 seconds). Long downloads are the usual reason this takes time.
+3. Transfer workers are cancelled and awaited on a **separate** 15-second
+   budget, so they always get their full grace period to remove staging files
+   and record durable job status even when step 2 used all of its own time.
+
+Worst case is 25 seconds, which is why `compose.yml` sets
+`stop_grace_period: 30s`. If you lower that value, lower the two server budgets
+in `backend/cmd/server/main.go` to match, or Docker will `SIGKILL` the process
+mid-cleanup.
+
+A clean stop marks in-flight jobs Cancelled and removes their
+`.lgfm-partial-*` files. Startup reconciliation remains the fallback after a
+host crash or forced termination — see
+[UPGRADING.md](UPGRADING.md#interrupted-transfers).
+
+Expected log lines on a clean stop:
+
+```text
+shutdown requested
+```
+
+`http shutdown: context deadline exceeded` means a request did not finish
+within step 2. Transfer cleanup still runs afterwards on its own budget.
 
 ## Fixtures in the default stack
 

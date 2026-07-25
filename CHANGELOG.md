@@ -14,6 +14,13 @@ after the first stable release.
 
 ### Fixed
 
+- Shutdown now closes open transfer event streams first. An open stream never
+  returns to idle, so `http.Server.Shutdown` previously blocked for its whole
+  deadline and left transfer workers no time to clean staging files or record
+  durable status. HTTP and transfer shutdown now use separate budgets.
+- List rows keep a fixed height and clip long names instead of wrapping. Wrapped
+  rows grew past the height that row virtualization assumes, which desynchronised
+  the scroll offset and overflowed the pane horizontally.
 - The login form no longer assumes that every installation uses `admin` as its
   administrator username.
 - Folder listings now refresh when the browser regains focus, every 30 seconds
@@ -25,6 +32,9 @@ after the first stable release.
   clamped long names instead of narrow columns with excessive wrapping.
 - File and folder context menus expose open/edit, copy, move, copy-path,
   rename, and permanent-delete actions with permission-aware disabled states.
+- List rows and grid cards now have dedicated selection controls, so folders
+  retain one-click navigation while multi-selection no longer requires modifier
+  keys. Shift-click range selection and Cmd/Ctrl selection remain available.
 - Closing the Inspector now removes its responsive overlay completely instead
   of leaving an invisible layer that intercepted pane clicks.
 - Copy and move now traverse complete source trees, including dotfiles and

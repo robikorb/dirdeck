@@ -18,6 +18,47 @@ The application is not a security boundary for storage that was never mounted
 into the container. It must not receive the Docker socket, privileged mode,
 host PID access, or block-device access.
 
+## Network exposure
+
+The container port is published on `LGFM_BIND_ADDR`, which defaults to
+`127.0.0.1`. Out of the box the application is reachable only from the Docker
+host. This is deliberate: the app is a browser interface to whatever storage the
+operator mounted, so widening its reach must be an explicit decision.
+
+Setting `LGFM_BIND_ADDR=0.0.0.0` publishes it on every interface. Before doing
+that, understand what plain HTTP means on a shared network:
+
+- the administrator password is sent in cleartext on every login;
+- the session cookie is sent in cleartext on every request;
+- anyone who can reach the port can reach the login form.
+
+Recommended order of preference:
+
+1. **VPN or Tailscale.** Keep the bind on `127.0.0.1` and reach the host through
+   the tunnel. Nothing is exposed to the LAN.
+2. **Reverse proxy with HTTPS** (Caddy, Traefik, nginx). Bind to `127.0.0.1`,
+   let the proxy terminate TLS, and set `LGFM_SECURE_COOKIE=true` so the session
+   cookie is marked `Secure`.
+3. **Plain LAN exposure.** Only on a network you fully control, and never with
+   sensitive storage mounted read-write.
+
+### Known limitations behind a reverse proxy
+
+- Login rate limiting keys on the connection's remote address. Behind a proxy
+  every client shares the proxy's address, so one client exhausting the limit
+  throttles everyone. `X-Forwarded-For` is **not** trusted, because honouring it
+  without a trusted-proxy allowlist would let any client forge its identity and
+  bypass throttling entirely. Raise `LGFM_LOGIN_RATE_LIMIT_MAX` if this bites.
+- The application assumes it is served from the origin root. Subpath mounts
+  (`https://host/files/`) are not supported yet; use a subdomain.
+- Session cookies are `SameSite=Strict`, so following an external link into the
+  application lands on the login form even with a valid session. Navigating
+  within the application is unaffected.
+
+Forward-authentication proxies (Authelia, Authentik) can be layered in front,
+but the application still enforces its own single-user login. There is no
+trusted-header authentication bypass.
+
 ## Authentication and sessions
 
 Phase 0 implements single-user authentication before directory browsing.
@@ -29,6 +70,9 @@ Phase 0 implements single-user authentication before directory browsing.
 - Use HTTP-only and `SameSite=Strict` cookies.
 - Use secure cookies behind HTTPS.
 - Rotate the session after login.
+- Remove expired and revoked sessions at startup.
+- Verify the password even when the submitted username does not match, so
+  response time does not reveal which field was wrong.
 - Rate-limit failed authentication.
 - Require CSRF and same-origin checks for state-changing requests.
 - Never place credentials or session tokens in URLs.

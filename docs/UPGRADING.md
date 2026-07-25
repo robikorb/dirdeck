@@ -14,6 +14,29 @@
 The default state volume name is `liquid-glass-file-manager_app-state`. Keep this
 name stable after installation.
 
+## Version notes
+
+### Upgrading to Unreleased
+
+**You will be signed out once.** Session identifiers are now stored as SHA-256
+hashes instead of plaintext, so a database read no longer yields usable session
+tokens. Existing rows were written in the old format and no longer match, so
+every browser must log in again after this upgrade. No other action is needed;
+your administrator credentials in `secrets/` are unchanged.
+
+Stale pre-upgrade session rows are ignored and disappear when they expire
+(`LGFM_SESSION_TTL_HOURS`, 12 hours by default). To clear them immediately,
+recreate the container — startup pruning removes expired and revoked rows.
+
+New environment variables (all optional, documented in
+[INSTALL.md](INSTALL.md)): `LGFM_BIND_ADDR`, `LGFM_LOGIN_RATE_LIMIT_MAX`,
+`LGFM_LOGIN_RATE_LIMIT_SEC`, `LGFM_SESSION_TTL_HOURS`, `LGFM_BACKUP_RETENTION`.
+
+`LGFM_BIND_ADDR` defaults to `127.0.0.1`. If you previously reached the app
+from another machine on your network, that worked because the port was
+published on every interface. Set `LGFM_BIND_ADDR=0.0.0.0` in `.env` to restore
+it, and read the exposure warning in [SECURITY.md](SECURITY.md) first.
+
 ## Backup
 
 ```bash

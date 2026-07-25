@@ -6,7 +6,10 @@ in inputs or using the editor.
 | Shortcut | Action |
 |----------|--------|
 | `Tab` | Normal browser focus navigation |
-| Click | Select one item |
+| Item selector | Add or remove an item without opening it |
+| `Shift`+item selector | Add a contiguous range |
+| Click a file | Select that file |
+| Click a folder | Open that folder |
 | `Cmd/Ctrl+click` | Toggle one item in the active selection |
 | `Shift+click` | Select a contiguous range |
 | `Cmd/Ctrl+Shift+click` | Add a contiguous range |

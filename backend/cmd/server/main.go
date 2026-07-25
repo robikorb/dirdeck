@@ -25,6 +25,13 @@ import (
 //go:embed all:static
 var embeddedStatic embed.FS
 
+// Shutdown budgets are consumed sequentially, so their sum must stay below the
+// compose stop_grace_period (30s) or the container is killed mid-cleanup.
+const (
+	httpShutdownTimeout     = 10 * time.Second
+	transferShutdownTimeout = 15 * time.Second
+)
+
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -108,12 +115,22 @@ func main() {
 		log.Printf("shutdown requested")
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
-	defer cancel()
-	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+	// Release SSE streams first. They never return to idle on their own, so
+	// http.Server.Shutdown would otherwise block for its full deadline.
+	srv.BeginShutdown()
+
+	httpCtx, cancelHTTP := context.WithTimeout(context.Background(), httpShutdownTimeout)
+	defer cancelHTTP()
+	if err := httpSrv.Shutdown(httpCtx); err != nil {
 		log.Printf("http shutdown: %v", err)
 	}
-	if err := xfer.Shutdown(shutdownCtx); err != nil {
+
+	// Independent budget: transfer workers must still get their full grace
+	// period to clean staging files and record durable status even when the
+	// HTTP shutdown above used all of its own time.
+	transferCtx, cancelTransfers := context.WithTimeout(context.Background(), transferShutdownTimeout)
+	defer cancelTransfers()
+	if err := xfer.Shutdown(transferCtx); err != nil {
 		log.Printf("transfer shutdown: %v", err)
 	}
 }

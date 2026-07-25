@@ -10,6 +10,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/liquid-glass-file-manager/backend/internal/auth"
@@ -30,6 +31,37 @@ type Server struct {
 	Prefs     *prefs.Store
 	Static    fs.FS
 	Ready     bool
+
+	shutdownMu sync.Mutex
+	shutdownCh chan struct{}
+}
+
+// shutdownSignal returns a channel that is closed when BeginShutdown is called.
+// The zero-value Server is usable: the channel is created on first use.
+func (s *Server) shutdownSignal() <-chan struct{} {
+	s.shutdownMu.Lock()
+	defer s.shutdownMu.Unlock()
+	if s.shutdownCh == nil {
+		s.shutdownCh = make(chan struct{})
+	}
+	return s.shutdownCh
+}
+
+// BeginShutdown tells long-lived streaming handlers to finish. Without it an
+// open SSE stream never returns to idle, so http.Server.Shutdown blocks until
+// its context expires and any later shutdown step inherits a dead deadline.
+// Safe to call more than once.
+func (s *Server) BeginShutdown() {
+	s.shutdownMu.Lock()
+	defer s.shutdownMu.Unlock()
+	if s.shutdownCh == nil {
+		s.shutdownCh = make(chan struct{})
+	}
+	select {
+	case <-s.shutdownCh:
+	default:
+		close(s.shutdownCh)
+	}
 }
 
 // Handler returns the root HTTP handler.
@@ -320,9 +352,14 @@ func (s *Server) handleTransferEvents(w http.ResponseWriter, r *http.Request) {
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
+	shutdown := s.shutdownSignal()
+
 	for {
 		select {
 		case <-r.Context().Done():
+			return
+		case <-shutdown:
+			// Process shutdown: release the connection so it can go idle.
 			return
 		case job, ok := <-sub:
 			if !ok {

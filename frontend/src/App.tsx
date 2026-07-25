@@ -373,8 +373,8 @@ function Pane({
     }
   }, [contextMenu])
 
-  function selectEntry(entry: DirEntry, event?: React.MouseEvent) {
-    const toggle = Boolean(event?.metaKey || event?.ctrlKey)
+  function selectEntry(entry: DirEntry, event?: React.MouseEvent, forceToggle = false) {
+    const toggle = forceToggle || Boolean(event?.metaKey || event?.ctrlKey)
     const extend = Boolean(event?.shiftKey)
     let nextPaths: string[]
 
@@ -422,6 +422,13 @@ function Pane({
       return
     }
     selectEntry(entry, event)
+  }
+
+  function toggleEntrySelection(entry: DirEntry, event: React.MouseEvent) {
+    event.preventDefault()
+    event.stopPropagation()
+    onActivate()
+    selectEntry(entry, event, true)
   }
 
   function editEntry(entry: DirEntry, event: React.MouseEvent | React.KeyboardEvent) {
@@ -621,16 +628,17 @@ function Pane({
           <table className="list-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Date modified</th>
-                <th>Size</th>
+                <th className="entry-select-heading" aria-label="Selection" />
+                <th className="entry-name-heading">Name</th>
+                <th className="entry-date-heading">Date modified</th>
+                <th className="entry-size-heading">Size</th>
                 <th className="entry-action-heading" aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
               {listStart > 0 ? (
                 <tr className="virtual-spacer" aria-hidden="true">
-                  <td colSpan={4} style={{ height: listStart * LIST_ROW_HEIGHT }} />
+                  <td colSpan={5} style={{ height: listStart * LIST_ROW_HEIGHT }} />
                 </tr>
               ) : null}
               {visibleListEntries.map((entry) => (
@@ -648,10 +656,25 @@ function Pane({
                     }
                   }}
                 >
+                  <td className="entry-select-cell">
+                    <button
+                      type="button"
+                      className="entry-select-button"
+                      aria-label={`${state.selectedPaths.includes(entry.path) ? 'Deselect' : 'Select'} ${entry.name}`}
+                      aria-pressed={state.selectedPaths.includes(entry.path)}
+                      title="Select item (Shift-click for a range)"
+                      onClick={(event) => toggleEntrySelection(entry, event)}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      {state.selectedPaths.includes(entry.path)
+                        ? <CheckSquare2 size={16} />
+                        : <Square size={16} />}
+                    </button>
+                  </td>
                   <td>
                     <span className="row-name">
                       {entryIcon(entry)}
-                      {entry.name}
+                      <span className="row-name-text" title={entry.name}>{entry.name}</span>
                     </span>
                   </td>
                   <td>{formatDate(entry.modTime)}</td>
@@ -675,7 +698,7 @@ function Pane({
               {listEnd < state.entries.length ? (
                 <tr className="virtual-spacer" aria-hidden="true">
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     style={{ height: (state.entries.length - listEnd) * LIST_ROW_HEIGHT }}
                   />
                 </tr>
@@ -711,6 +734,19 @@ function Pane({
                     }
                   }}
                 >
+                  <button
+                    type="button"
+                    className="entry-select-button grid-select-button"
+                    aria-label={`${state.selectedPaths.includes(entry.path) ? 'Deselect' : 'Select'} ${entry.name}`}
+                    aria-pressed={state.selectedPaths.includes(entry.path)}
+                    title="Select item (Shift-click for a range)"
+                    onClick={(event) => toggleEntrySelection(entry, event)}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    {state.selectedPaths.includes(entry.path)
+                      ? <CheckSquare2 size={16} />
+                      : <Square size={16} />}
+                  </button>
                   <Thumb volumeId={state.volumeId} entry={entry} enabled={thumbsOn} />
                   <div className="grid-name" title={entry.name}>{entry.name}</div>
                   {!entry.isDir && isEditablePath(entry.path) ? (

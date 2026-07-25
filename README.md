@@ -19,7 +19,8 @@ in SQLite inside a persistent Docker volume.
 
 - Authenticated single-user web interface with Argon2id password hashing.
 - Dual-pane list and grid browsing.
-- Multiple selection with Cmd/Ctrl+click, Shift+click, and Cmd/Ctrl+A.
+- Dedicated item selectors plus Cmd/Ctrl+click, Shift+click, and Cmd/Ctrl+A
+  multiple selection.
 - Batch copy and move jobs with combined byte and file progress.
 - Complete transfer traversal that is independent of hidden-file display
   preferences and UI listing limits.
@@ -152,6 +153,7 @@ provides HTTPS, set `LGFM_SECURE_COOKIE=true`.
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components and runtime design |
 | [docs/KEYBOARD.md](docs/KEYBOARD.md) | Keyboard and selection shortcuts |
 | [docs/RELEASE-TEST.md](docs/RELEASE-TEST.md) | Clean-install release acceptance test |
+| [docs/PRODUCT-ROADMAP.md](docs/PRODUCT-ROADMAP.md) | Public-launch priorities and rebrand proposal |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development and pull-request rules |
 | [SECURITY.md](SECURITY.md) | Private vulnerability reporting policy |

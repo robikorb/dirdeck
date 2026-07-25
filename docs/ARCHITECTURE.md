@@ -34,6 +34,28 @@ Browser
 Keep deployment simple. Add external databases, queues, or helper services only
 when a measured requirement justifies them.
 
+### Shutdown sequence
+
+`SIGTERM` and `SIGINT` run an ordered shutdown. The ordering is a correctness
+requirement, not a nicety:
+
+1. `api.Server.BeginShutdown` closes a broadcast channel that long-lived
+   streaming handlers select on. `http.Server.Shutdown` waits for connections to
+   become idle and does **not** cancel request contexts, so a handler that
+   blocks forever — the transfer event stream — must be told to return. Without
+   this step the HTTP shutdown consumes its entire deadline.
+2. `http.Server.Shutdown` drains in-flight requests.
+3. `transfer.Manager.Shutdown` cancels workers and waits for them.
+
+Steps 2 and 3 take **independent** contexts. A shared deadline lets a slow HTTP
+drain starve the transfer cleanup, which is what turns a controlled stop into
+orphaned staging files and jobs stuck in Running. Their sum must stay below the
+Compose `stop_grace_period`; both constants live in
+`backend/cmd/server/main.go`.
+
+Any future long-lived handler (websockets, log tailing, progress streams) must
+select on the same shutdown signal.
+
 ## Storage configuration
 
 Each mount should have:
@@ -207,6 +229,26 @@ Both panes must support list and grid modes independently. The inspector is
 collapsible and should default closed when horizontal space is limited.
 Both views virtualize their visible window with overscan so a 10,000-entry
 directory does not create 10,000 live rows or cards.
+
+### Virtualization contract
+
+Row virtualization positions spacer elements arithmetically, so **every row must
+be exactly the height the code assumes**. Four constants in `App.tsx` are
+duplicated in `index.css` and must be changed together:
+
+| `App.tsx` | `index.css` | Meaning |
+|-----------|-------------|---------|
+| `LIST_ROW_HEIGHT` | `.list-table tbody tr:not(.virtual-spacer)` height | List row height |
+| `GRID_ROW_HEIGHT` | `.grid-item` height + `.grid` gap | Grid row pitch |
+| `GRID_MIN_COLUMN_WIDTH` | `.grid` `minmax()` first value | Column breakpoint |
+| `GRID_GAP` | `.grid` gap | Column and row gap |
+
+A cell that can grow breaks this silently: the list looked correct until a long
+filename wrapped, after which the scroll offset drifted further with every row.
+The list therefore uses `table-layout: fixed`, fixed date and size column
+widths, and clips the name with an ellipsis rather than wrapping it. Do not add
+a list cell with variable height, and do not remove the clipping without also
+making the row height dynamic.
 
 ## Theme direction
 

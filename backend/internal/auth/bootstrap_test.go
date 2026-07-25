@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"testing"
 
-	appdb "github.com/liquid-glass-file-manager/backend/internal/db"
+	appdb "github.com/robikorb/dirdeck/backend/internal/db"
 )
 
 func TestBootstrapAdminKeepsHashOnRestartAndRevokesOnRotation(t *testing.T) {

@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 260" role="img" aria-labelledby="title desc">
-  <title id="title">Liquid Glass File Manager</title>
-  <desc id="desc">Liquid Glass File Manager wordmark with two connected glass folders.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 260" role="img" aria-labelledby="title desc">
+  <title id="title">DirDeck</title>
+  <desc id="desc">DirDeck wordmark with two connected glass folders.</desc>
   <defs>
-    <linearGradient id="shell" x1="0" y1="0" x2="1040" y2="260" gradientUnits="userSpaceOnUse">
+    <linearGradient id="shell" x1="0" y1="0" x2="660" y2="260" gradientUnits="userSpaceOnUse">
       <stop stop-color="#111a2e"/>
       <stop offset="1" stop-color="#070b13"/>
     </linearGradient>
@@ -15,7 +15,7 @@
       <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#020713" flood-opacity=".7"/>
     </filter>
   </defs>
-  <rect x="4" y="4" width="1032" height="252" rx="48" fill="url(#shell)"/>
+  <rect x="4" y="4" width="652" height="252" rx="48" fill="url(#shell)"/>
   <rect x="5" y="5" width="1030" height="250" rx="47" fill="none" stroke="#dbeeff" stroke-opacity=".14" stroke-width="2"/>
   <g filter="url(#glow)">
     <path d="M55 77c0-8.8 7.2-16 16-16h32l14 14h35c8.8 0 16 7.2 16 16v93c0 8.8-7.2 16-16 16H71c-8.8 0-16-7.2-16-16V77Z" fill="url(#mark)"/>
@@ -24,7 +24,7 @@
   <path d="M65 104h93v70c0 8.8-7.2 16-16 16H81c-8.8 0-16-7.2-16-16v-70Zm90 6h91v64c0 8.8-7.2 16-16 16h-59c-8.8 0-16-7.2-16-16v-64Z" fill="#07101f" fill-opacity=".38"/>
   <path d="M113 125h76m0 0-15-15m15 15-15 15M198 161h-76m0 0 15-15m-15 15 15 15" fill="none" stroke="#f8fbff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M45 48c47-30 123-37 180-10" fill="none" stroke="#fff" stroke-opacity=".13" stroke-width="9" stroke-linecap="round"/>
-  <text x="310" y="125" fill="#f5f8ff" font-family="Inter, SF Pro Display, Segoe UI, sans-serif" font-size="64" font-weight="700" letter-spacing="-2">Liquid Glass</text>
+  <text x="310" y="125" fill="#f5f8ff" font-family="Inter, SF Pro Display, Segoe UI, sans-serif" font-size="64" font-weight="700" letter-spacing="-2">DirDeck</text>
   <text x="314" y="177" fill="#84b9ff" font-family="Inter, SF Pro Display, Segoe UI, sans-serif" font-size="28" font-weight="600" letter-spacing="8">FILE MANAGER</text>
   <path d="M314 199h558" stroke="#8ac7ff" stroke-opacity=".18" stroke-width="2"/>
   <circle cx="907" cy="199" r="4" fill="#69d5ff"/>

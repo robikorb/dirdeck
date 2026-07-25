@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	appfs "github.com/liquid-glass-file-manager/backend/internal/fs"
-	"github.com/liquid-glass-file-manager/backend/internal/prefs"
-	"github.com/liquid-glass-file-manager/backend/internal/preview"
+	appfs "github.com/robikorb/dirdeck/backend/internal/fs"
+	"github.com/robikorb/dirdeck/backend/internal/prefs"
+	"github.com/robikorb/dirdeck/backend/internal/preview"
 )
 
 func (s *Server) handleVolumes(w http.ResponseWriter, _ *http.Request) {

@@ -141,7 +141,7 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
         <div className="login-brand">
           <img src="/app-icon.svg" alt="" />
           <div>
-            <h1>Liquid Glass</h1>
+            <h1>DirDeck</h1>
             <span>File Manager</span>
           </div>
         </div>
@@ -1684,7 +1684,7 @@ export default function App() {
       <aside className="glass side-panel" aria-label="Locations">
         <div className="side-brand">
           <img src="/app-icon.svg" alt="" aria-hidden />
-          <span>Liquid Glass</span>
+          <span>DirDeck</span>
         </div>
 
         <div className="side-sections">

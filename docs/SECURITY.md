@@ -20,12 +20,12 @@ host PID access, or block-device access.
 
 ## Network exposure
 
-The container port is published on `LGFM_BIND_ADDR`, which defaults to
+The container port is published on `DIRDECK_BIND_ADDR`, which defaults to
 `127.0.0.1`. Out of the box the application is reachable only from the Docker
 host. This is deliberate: the app is a browser interface to whatever storage the
 operator mounted, so widening its reach must be an explicit decision.
 
-Setting `LGFM_BIND_ADDR=0.0.0.0` publishes it on every interface. Before doing
+Setting `DIRDECK_BIND_ADDR=0.0.0.0` publishes it on every interface. Before doing
 that, understand what plain HTTP means on a shared network:
 
 - the administrator password is sent in cleartext on every login;
@@ -37,7 +37,7 @@ Recommended order of preference:
 1. **VPN or Tailscale.** Keep the bind on `127.0.0.1` and reach the host through
    the tunnel. Nothing is exposed to the LAN.
 2. **Reverse proxy with HTTPS** (Caddy, Traefik, nginx). Bind to `127.0.0.1`,
-   let the proxy terminate TLS, and set `LGFM_SECURE_COOKIE=true` so the session
+   let the proxy terminate TLS, and set `DIRDECK_SECURE_COOKIE=true` so the session
    cookie is marked `Secure`.
 3. **Plain LAN exposure.** Only on a network you fully control, and never with
    sensitive storage mounted read-write.
@@ -48,7 +48,7 @@ Recommended order of preference:
   every client shares the proxy's address, so one client exhausting the limit
   throttles everyone. `X-Forwarded-For` is **not** trusted, because honouring it
   without a trusted-proxy allowlist would let any client forge its identity and
-  bypass throttling entirely. Raise `LGFM_LOGIN_RATE_LIMIT_MAX` if this bites.
+  bypass throttling entirely. Raise `DIRDECK_LOGIN_RATE_LIMIT_MAX` if this bites.
 - The application assumes it is served from the origin root. Subpath mounts
   (`https://host/files/`) are not supported yet; use a subdomain.
 - Session cookies are `SameSite=Strict`, so following an external link into the

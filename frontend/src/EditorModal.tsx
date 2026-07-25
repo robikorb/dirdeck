@@ -24,7 +24,7 @@ type MonacoWorkerEnvironment = {
 loader.config({ monaco })
 
 const configureEditor: BeforeMount = (editorAPI) => {
-  editorAPI.editor.defineTheme('liquid-glass-dark', {
+  editorAPI.editor.defineTheme('dirdeck-dark', {
     base: 'vs-dark',
     inherit: true,
     rules: [
@@ -156,7 +156,7 @@ export default function EditorModal({
           <Editor
             height="100%"
             beforeMount={configureEditor}
-            theme="liquid-glass-dark"
+            theme="dirdeck-dark"
             language={document.language}
             value={document.content}
             onChange={(value) => onChange(value ?? '')}

@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/liquid-glass-file-manager/backend/internal/db"
-	"github.com/liquid-glass-file-manager/backend/internal/prefs"
+	"github.com/robikorb/dirdeck/backend/internal/db"
+	"github.com/robikorb/dirdeck/backend/internal/prefs"
 )
 
 func TestFavoritesRecentAndPanes(t *testing.T) {

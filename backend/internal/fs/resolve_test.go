@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	appfs "github.com/liquid-glass-file-manager/backend/internal/fs"
-	"github.com/liquid-glass-file-manager/backend/internal/volumes"
+	appfs "github.com/robikorb/dirdeck/backend/internal/fs"
+	"github.com/robikorb/dirdeck/backend/internal/volumes"
 )
 
 func setupVol(t *testing.T) (*appfs.Service, string) {

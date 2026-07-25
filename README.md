@@ -1,15 +1,17 @@
 <p align="center">
-  <img src="frontend/public/logo.svg" alt="Liquid Glass File Manager" width="720">
+  <img src="frontend/public/logo.svg" alt="DirDeck" width="460">
 </p>
 
-# Liquid Glass File Manager
+# DirDeck
 
-[![CI](https://github.com/robikorb/liquid-glass-file-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/robikorb/liquid-glass-file-manager/actions/workflows/ci.yml)
+[![CI](https://github.com/robikorb/dirdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/robikorb/dirdeck/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-66bfff.svg)](LICENSE)
 
-Docker-first dual-pane file manager with a dark smoked-glass interface. Mount
-only the folders and disks you want the application to see, then browse, copy,
-move, rename, edit, preview, and delete files from a browser.
+**A fast, self-hosted dual-pane file manager for your homelab.**
+
+Total Commander-style two-pane workflow in the browser, packaged as one Docker
+container. Mount only the folders and disks you want it to see, then browse,
+copy, move, rename, edit, preview, and delete files across them.
 
 The backend is written in Go, the frontend uses React and TypeScript, and the
 complete UI is embedded into one container image. Application state is stored
@@ -39,8 +41,8 @@ in SQLite inside a persistent Docker volume.
 Requirements: Docker Engine or Docker Desktop and Docker Compose v2.
 
 ```bash
-git clone https://github.com/robikorb/liquid-glass-file-manager.git
-cd liquid-glass-file-manager
+git clone https://github.com/robikorb/dirdeck.git
+cd dirdeck
 ./setup.sh
 ```
 
@@ -54,12 +56,12 @@ cd liquid-glass-file-manager
 6. waits for the readiness check.
 
 The default interface is available at
-[http://127.0.0.1:3002](http://127.0.0.1:3002). Change `LGFM_PORT` in `.env`
+[http://127.0.0.1:3002](http://127.0.0.1:3002). Change `DIRDECK_PORT` in `.env`
 before startup if that port is already in use.
 
 The default bind address is `127.0.0.1`. For trusted LAN or VPN access, set
-`LGFM_BIND_ADDR=0.0.0.0` explicitly and protect the service with host firewall
-rules. Prefer an HTTPS reverse proxy and set `LGFM_SECURE_COOKIE=true`.
+`DIRDECK_BIND_ADDR=0.0.0.0` explicitly and protect the service with host firewall
+rules. Prefer an HTTPS reverse proxy and set `DIRDECK_SECURE_COOKIE=true`.
 
 The password is never baked into the image or committed to Git. On startup it
 is hashed with Argon2id before being stored in SQLite.
@@ -135,7 +137,7 @@ state volume. See [docs/UPGRADING.md](docs/UPGRADING.md).
 This application exposes whatever storage the operator mounts. Do not mount the
 Docker socket, block devices, the host root, or sensitive folders that users
 should not access. Prefer LAN, VPN, or Tailscale access. If a reverse proxy
-provides HTTPS, set `LGFM_SECURE_COOKIE=true`.
+provides HTTPS, set `DIRDECK_SECURE_COOKIE=true`.
 
 ## Documentation
 

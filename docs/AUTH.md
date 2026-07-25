@@ -17,12 +17,12 @@ a valid session except health/ready.
 
 - Opaque random session ID in an HTTP-only cookie: `lgfm_session`; SQLite stores
   only its SHA-256 digest
-- `SameSite=Strict`; `Secure` when `LGFM_SECURE_COOKIE=true`
+- `SameSite=Strict`; `Secure` when `DIRDECK_SECURE_COOKIE=true`
 - CSRF token stored server-side with the session and returned to the client
   after login / session check
 - Session rotation: previous cookie session is revoked on successful login
 - Expired and revoked sessions are pruned at startup
-- Default TTL: 12 hours (`LGFM_SESSION_TTL_HOURS`)
+- Default TTL: 12 hours (`DIRDECK_SESSION_TTL_HOURS`)
 
 ## Endpoints
 
@@ -33,8 +33,8 @@ a valid session except health/ready.
 | `GET` | `/api/auth/session` | Cookie optional | No | `{ authenticated, username?, csrfToken?, expiresAt? }` |
 
 Failed logins are rate-limited per client IP. Defaults are 10 failures per 60
-seconds and can be adjusted with `LGFM_LOGIN_RATE_LIMIT_MAX` and
-`LGFM_LOGIN_RATE_LIMIT_SEC`.
+seconds and can be adjusted with `DIRDECK_LOGIN_RATE_LIMIT_MAX` and
+`DIRDECK_LOGIN_RATE_LIMIT_SEC`.
 
 ## CSRF rules
 

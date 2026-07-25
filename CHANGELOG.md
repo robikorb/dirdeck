@@ -5,6 +5,15 @@ after the first stable release.
 
 ## Unreleased
 
+### Changed
+
+- **The project is now called DirDeck.** Existing installations upgrade without
+  configuration changes: `LGFM_*` environment variables still work and log a
+  deprecation notice, the Docker state volume default is unchanged, the Compose
+  project name is deliberately not pinned, API paths and the session cookie name
+  are untouched, and GitHub redirects the old repository URL. See
+  [docs/UPGRADING.md](docs/UPGRADING.md#the-liquid-glass-file-manager-dirdeck-rename).
+
 ### Added
 
 - Configurable login throttling, session lifetime, host bind address, and backup
@@ -71,7 +80,7 @@ after the first stable release.
 ### Changed
 
 - Compose binds to localhost by default. LAN or VPN exposure now requires the
-  explicit `LGFM_BIND_ADDR=0.0.0.0` opt-in.
+  explicit `DIRDECK_BIND_ADDR=0.0.0.0` opt-in.
 - CI runs the Go race detector and starts the Compose stack to verify the ready
   endpoint after a container build.
 

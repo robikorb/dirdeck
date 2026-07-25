@@ -4,7 +4,7 @@
 
 | Data | Location | Normal update behavior |
 |------|----------|------------------------|
-| SQLite, sessions, preferences, transfer history | Docker volume named by `LGFM_DATA_VOLUME` | preserved |
+| SQLite, sessions, preferences, transfer history | Docker volume named by `DIRDECK_DATA_VOLUME` | preserved |
 | Administrator bootstrap files | `secrets/` | preserved and gitignored |
 | Volume registry | `config/volumes.yaml` | preserved and gitignored |
 | Local runtime variables | `.env` | preserved and gitignored |
@@ -16,6 +16,45 @@ name stable after installation.
 
 ## Version notes
 
+### The Liquid Glass File Manager → DirDeck rename
+
+The project was renamed. **Existing installations need no configuration
+changes**; everything below is compatible on purpose.
+
+| Surface | Before | Now | What you must do |
+|---|---|---|---|
+| Environment prefix | `LGFM_*` | `DIRDECK_*` | Nothing. Old names still work and log a one-line deprecation notice |
+| State volume default | `liquid-glass-file-manager_app-state` | unchanged | Nothing. The default was **not** changed, so no database moves |
+| Compose project name | directory name | unchanged | Nothing. The project name is deliberately not pinned, so your containers are not orphaned |
+| Git remote | `…/liquid-glass-file-manager.git` | `…/dirdeck.git` | Nothing. GitHub redirects the old URL |
+| API paths | `/api/…` | unchanged | Nothing |
+| Session cookie | `lgfm_session` | unchanged | Nothing. Renaming it would sign everyone out |
+| Container binary and user | `lgfm` | `dirdeck` | Nothing. Internal to the image |
+
+Compose variable substitution cannot see the application's own alias handling,
+so `compose.yml` spells out each fallback explicitly, for example
+`${DIRDECK_BIND_ADDR:-${LGFM_BIND_ADDR:-127.0.0.1}}`. This matters: without it a
+legacy `LGFM_BIND_ADDR=0.0.0.0` would be silently ignored and the application
+would drop back to localhost, cutting off network access after an upgrade.
+
+To migrate at your own pace, rename the variables in `.env` from `LGFM_` to
+`DIRDECK_` and restart. The deprecation notices tell you exactly which names are
+still legacy:
+
+```text
+config: LGFM_BIND_ADDR is deprecated, rename it to DIRDECK_BIND_ADDR
+```
+
+Optionally update the remote to its new name:
+
+```bash
+git remote set-url origin https://github.com/robikorb/dirdeck.git
+```
+
+The transfer staging prefix `.lgfm-partial-` and the editor temporary prefix
+`.lgfm-edit-` are intentionally unchanged. Renaming them would leave partial
+files from interrupted jobs unrecognised by the cleanup routine.
+
 ### Upgrading to Unreleased
 
 **You will be signed out once.** Session identifiers are now stored as SHA-256
@@ -25,16 +64,16 @@ every browser must log in again after this upgrade. No other action is needed;
 your administrator credentials in `secrets/` are unchanged.
 
 Stale pre-upgrade session rows are ignored and disappear when they expire
-(`LGFM_SESSION_TTL_HOURS`, 12 hours by default). To clear them immediately,
+(`DIRDECK_SESSION_TTL_HOURS`, 12 hours by default). To clear them immediately,
 recreate the container — startup pruning removes expired and revoked rows.
 
 New environment variables (all optional, documented in
-[INSTALL.md](INSTALL.md)): `LGFM_BIND_ADDR`, `LGFM_LOGIN_RATE_LIMIT_MAX`,
-`LGFM_LOGIN_RATE_LIMIT_SEC`, `LGFM_SESSION_TTL_HOURS`, `LGFM_BACKUP_RETENTION`.
+[INSTALL.md](INSTALL.md)): `DIRDECK_BIND_ADDR`, `DIRDECK_LOGIN_RATE_LIMIT_MAX`,
+`DIRDECK_LOGIN_RATE_LIMIT_SEC`, `DIRDECK_SESSION_TTL_HOURS`, `DIRDECK_BACKUP_RETENTION`.
 
-`LGFM_BIND_ADDR` defaults to `127.0.0.1`. If you previously reached the app
+`DIRDECK_BIND_ADDR` defaults to `127.0.0.1`. If you previously reached the app
 from another machine on your network, that worked because the port was
-published on every interface. Set `LGFM_BIND_ADDR=0.0.0.0` in `.env` to restore
+published on every interface. Set `DIRDECK_BIND_ADDR=0.0.0.0` in `.env` to restore
 it, and read the exposure warning in [SECURITY.md](SECURITY.md) first.
 
 ## Backup
@@ -49,7 +88,7 @@ The script:
 2. archives the named application state volume;
 3. separately archives `.env`, the Compose override, volume registry, and
    credentials;
-4. prunes old archive pairs according to `LGFM_BACKUP_RETENTION` (default 10);
+4. prunes old archive pairs according to `DIRDECK_BACKUP_RETENTION` (default 10);
 5. restarts the service if it was running.
 
 Archives are written to `backups/` with UTC timestamps and are explicitly set
@@ -93,7 +132,7 @@ The `-v` flag deletes the application state volume.
 git pull --ff-only
 docker compose up -d --build --remove-orphans
 docker compose ps
-curl -fsS http://127.0.0.1:${LGFM_PORT:-3002}/api/ready
+curl -fsS http://127.0.0.1:${DIRDECK_PORT:-3002}/api/ready
 ```
 
 ## Rollback
@@ -133,7 +172,7 @@ inspect its `.env`, `compose.override.yml`, registry, and secrets, then copy the
 approved files into the checkout. Set:
 
 ```dotenv
-LGFM_DATA_VOLUME=liquid-glass-file-manager_app-state-restored
+DIRDECK_DATA_VOLUME=liquid-glass-file-manager_app-state-restored
 ```
 
 Start the matching application version, verify login and `/api/ready`, and

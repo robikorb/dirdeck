@@ -1,4 +1,4 @@
-module github.com/liquid-glass-file-manager/backend
+module github.com/robikorb/dirdeck/backend
 
 go 1.24
 

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/liquid-glass-file-manager/backend/internal/volumes"
+	"github.com/robikorb/dirdeck/backend/internal/volumes"
 	"golang.org/x/sys/unix"
 )
 

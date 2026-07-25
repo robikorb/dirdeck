@@ -19,7 +19,7 @@ import (
 	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp" // register WebP decoder
 
-	appfs "github.com/liquid-glass-file-manager/backend/internal/fs"
+	appfs "github.com/robikorb/dirdeck/backend/internal/fs"
 )
 
 var (

@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	appfs "github.com/liquid-glass-file-manager/backend/internal/fs"
-	"github.com/liquid-glass-file-manager/backend/internal/preview"
-	"github.com/liquid-glass-file-manager/backend/internal/volumes"
+	appfs "github.com/robikorb/dirdeck/backend/internal/fs"
+	"github.com/robikorb/dirdeck/backend/internal/preview"
+	"github.com/robikorb/dirdeck/backend/internal/volumes"
 )
 
 func setupPreviewVol(t *testing.T, thumbnails bool) (*preview.Service, string, string) {

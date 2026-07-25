@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	appfs "github.com/liquid-glass-file-manager/backend/internal/fs"
+	appfs "github.com/robikorb/dirdeck/backend/internal/fs"
 )
 
 // KindMove is a Phase 2 durable move job.

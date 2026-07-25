@@ -14,13 +14,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/liquid-glass-file-manager/backend/internal/api"
-	"github.com/liquid-glass-file-manager/backend/internal/auth"
-	"github.com/liquid-glass-file-manager/backend/internal/db"
-	appfs "github.com/liquid-glass-file-manager/backend/internal/fs"
-	"github.com/liquid-glass-file-manager/backend/internal/prefs"
-	"github.com/liquid-glass-file-manager/backend/internal/preview"
-	"github.com/liquid-glass-file-manager/backend/internal/volumes"
+	"github.com/robikorb/dirdeck/backend/internal/api"
+	"github.com/robikorb/dirdeck/backend/internal/auth"
+	"github.com/robikorb/dirdeck/backend/internal/db"
+	appfs "github.com/robikorb/dirdeck/backend/internal/fs"
+	"github.com/robikorb/dirdeck/backend/internal/prefs"
+	"github.com/robikorb/dirdeck/backend/internal/preview"
+	"github.com/robikorb/dirdeck/backend/internal/volumes"
 )
 
 func TestPhase3ThumbnailsFavoritesAndPanes(t *testing.T) {

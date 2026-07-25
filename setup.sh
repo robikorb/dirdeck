@@ -109,8 +109,8 @@ until docker compose exec -T file-manager \
   sleep 2
 done
 
-port=$(sed -n 's/^LGFM_PORT=//p' .env | tail -n 1)
+port=$(sed -n 's/^DIRDECK_PORT=//p' .env | tail -n 1)
 port=${port:-3002}
 echo ""
-echo "Liquid Glass File Manager is ready: http://127.0.0.1:$port"
+echo "DirDeck is ready: http://127.0.0.1:$port"
 echo "Add real storage to compose.override.yml and config/volumes.yaml."

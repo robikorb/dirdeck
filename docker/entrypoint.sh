@@ -24,18 +24,18 @@ if [ "$runtime_uid" -eq 0 ] || [ "$runtime_gid" -eq 0 ]; then
   exit 1
 fi
 
-current_gid="$(id -g lgfm)"
-current_uid="$(id -u lgfm)"
+current_gid="$(id -g dirdeck)"
+current_uid="$(id -u dirdeck)"
 
 if [ "$current_gid" != "$runtime_gid" ]; then
-  groupmod -o -g "$runtime_gid" lgfm
+  groupmod -o -g "$runtime_gid" dirdeck
 fi
 if [ "$current_uid" != "$runtime_uid" ]; then
-  usermod -o -u "$runtime_uid" lgfm
+  usermod -o -u "$runtime_uid" dirdeck
 fi
 
 mkdir -p /var/lib/file-manager
-chown lgfm:lgfm /var/lib/file-manager
+chown dirdeck:dirdeck /var/lib/file-manager
 umask "$runtime_umask"
 
-exec gosu lgfm "$@"
+exec gosu dirdeck "$@"

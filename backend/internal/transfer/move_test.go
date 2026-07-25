@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/liquid-glass-file-manager/backend/internal/db"
-	appfs "github.com/liquid-glass-file-manager/backend/internal/fs"
-	"github.com/liquid-glass-file-manager/backend/internal/transfer"
-	"github.com/liquid-glass-file-manager/backend/internal/volumes"
+	"github.com/robikorb/dirdeck/backend/internal/db"
+	appfs "github.com/robikorb/dirdeck/backend/internal/fs"
+	"github.com/robikorb/dirdeck/backend/internal/transfer"
+	"github.com/robikorb/dirdeck/backend/internal/volumes"
 )
 
 func setupTwoRW(t *testing.T) (a, b string, fsys *appfs.Service, mgr *transfer.Manager, database *sql.DB) {

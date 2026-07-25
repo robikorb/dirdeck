@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/liquid-glass-file-manager/backend/internal/db"
+	"github.com/robikorb/dirdeck/backend/internal/db"
 )
 
 func TestOpenAppliesSQLitePragmas(t *testing.T) {

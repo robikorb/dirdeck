@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/liquid-glass-file-manager/backend/internal/preview"
+	"github.com/robikorb/dirdeck/backend/internal/preview"
 )
 
 const maxEditorBytes int64 = 2 << 20

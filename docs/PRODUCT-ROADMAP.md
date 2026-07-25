@@ -1,7 +1,7 @@
 # Product roadmap and rebrand plan
 
 Status: proposal for review  
-Current product name: Liquid Glass File Manager  
+Current product name: DirDeck  
 Recommended working name: **DirDeck**
 
 ## Product position
@@ -60,7 +60,7 @@ similar communities.
   and trademark check.
 - Change visible copy, icons, README text, repository description, container
   labels, and documentation together.
-- Keep the existing `LGFM_*` environment variables and current Docker state
+- Keep the pre-rename `LGFM_*` environment variables and current Docker state
   volume compatible for at least two releases.
 - If new environment names are introduced, treat the old names as documented
   aliases and emit a non-fatal deprecation notice.
@@ -205,7 +205,7 @@ Proposed identifiers after approval:
 | Compose project example | `dirdeck` |
 | State volume for new installs | `dirdeck-data` |
 | New environment prefix | `DIRDECK_` |
-| Legacy environment prefix | `LGFM_` remains supported |
+| Legacy environment prefix | `DIRDECK_` remains supported |
 
 The name is a recommendation, not a completed legal or trademark clearance.
 Before the repository rename, recheck major package registries, container
@@ -224,7 +224,7 @@ Rejected working names:
 - **PaneForge**: already an established open-source pane-layout library.
 - **FileDeck**: already used by an active document-management product.
 - **TwinPane**: already used by a commercial remote file-access product.
-- **Liquid Glass File Manager**: descriptive but derivative, visually narrow,
+- **DirDeck**: descriptive but derivative, visually narrow,
   and likely to date faster than the product.
 
 ## Suggested release sequence

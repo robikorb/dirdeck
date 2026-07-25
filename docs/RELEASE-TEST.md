@@ -18,7 +18,7 @@ The release candidate must be installable without unpublished local knowledge.
 9. Confirm `compose.override.yml`, `config/volumes.yaml`, `.env`, and secrets
    remain untracked and unchanged after a pull/rebuild.
 10. Confirm Compose binds to `127.0.0.1` by default and that LAN access appears
-    only after explicitly setting `LGFM_BIND_ADDR=0.0.0.0`.
+    only after explicitly setting `DIRDECK_BIND_ADDR=0.0.0.0`.
 
 Any undocumented command, copied local config, or developer-only assumption is
 a release defect and must be fixed before retesting.

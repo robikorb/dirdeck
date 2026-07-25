@@ -13,7 +13,7 @@ fi
 umask 077
 mkdir -p backups
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
-state_volume=$(sed -n 's/^LGFM_DATA_VOLUME=//p' .env 2>/dev/null | tail -n 1)
+state_volume=$(sed -n 's/^DIRDECK_DATA_VOLUME=//p' .env 2>/dev/null | tail -n 1)
 state_volume=${state_volume:-liquid-glass-file-manager_app-state}
 state_archive="$project_dir/backups/lgfm-state-$timestamp.tar.gz"
 config_archive="$project_dir/backups/lgfm-config-$timestamp.tar.gz"
@@ -48,7 +48,7 @@ LC_ALL=C tar -czf "$config_archive" \
   secrets/admin_password
 chmod 600 "$config_archive"
 
-retention=$(sed -n 's/^LGFM_BACKUP_RETENTION=//p' .env 2>/dev/null | tail -n 1)
+retention=$(sed -n 's/^DIRDECK_BACKUP_RETENTION=//p' .env 2>/dev/null | tail -n 1)
 retention=${retention:-10}
 case "$retention" in
   ''|*[!0-9]*) retention=10 ;;

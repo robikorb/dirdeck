@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/liquid-glass-file-manager/backend/internal/volumes"
+	"github.com/robikorb/dirdeck/backend/internal/volumes"
 )
 
 func TestLoadRejectsOverlappingAndInvalid(t *testing.T) {

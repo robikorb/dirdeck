@@ -1,4 +1,4 @@
-# Liquid Glass File Manager UI
+# DirDeck UI
 
 React and TypeScript frontend embedded into the production Go binary.
 

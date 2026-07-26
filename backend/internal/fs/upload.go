@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -182,4 +183,36 @@ func (s *Service) SweepUploadStaging(volumeID, parentRel string) {
 			_ = s.Remove(volumeID, e.Path)
 		}
 	}
+}
+
+// MkdirAllRel creates a relative directory chain beneath parentRel, validating
+// every component through the same resolver used for single-level Mkdir.
+//
+// Folder upload needs this: the browser sends a file's path inside the dropped
+// tree, and each level has to be created before the file can land. Existing
+// directories are reused; an existing non-directory is an error rather than
+// something to overwrite.
+func (s *Service) MkdirAllRel(volumeID, parentRel, relDir string) (string, error) {
+	if _, err := s.EnsureWritableVolume(volumeID); err != nil {
+		return "", err
+	}
+	current, err := normalizeRel(parentRel)
+	if err != nil {
+		return "", err
+	}
+	clean, err := normalizeRel(relDir)
+	if err != nil {
+		return "", err
+	}
+	if clean == "" {
+		return current, nil
+	}
+	for _, part := range strings.Split(clean, "/") {
+		created, err := s.Mkdir(volumeID, current, part)
+		if err != nil {
+			return "", err
+		}
+		current = created
+	}
+	return current, nil
 }

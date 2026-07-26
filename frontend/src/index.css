@@ -1770,3 +1770,17 @@ input:focus-visible,
   border-radius: 12px;
   margin: 8px;
 }
+
+.upload-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+
+.upload-failed {
+  color: var(--danger);
+}

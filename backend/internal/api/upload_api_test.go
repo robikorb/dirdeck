@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	urlpkg "net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -92,6 +93,25 @@ volumes:
 func (f *uploadFixture) upload(t *testing.T, volume, dir, name, conflict string, body io.Reader) *httptest.ResponseRecorder {
 	t.Helper()
 	url := fmt.Sprintf("/api/volumes/%s/upload?path=%s&name=%s", volume, dir, name)
+	if conflict != "" {
+		url += "&conflict=" + conflict
+	}
+	req := httptest.NewRequest(http.MethodPost, url, body)
+	for _, c := range f.cookies {
+		req.AddCookie(c)
+	}
+	req.Header.Set("X-CSRF-Token", f.csrf)
+	req.Header.Set("Origin", "http://example.com")
+	req.Host = "example.com"
+	rr := httptest.NewRecorder()
+	f.handler.ServeHTTP(rr, req)
+	return rr
+}
+
+func (f *uploadFixture) uploadInto(t *testing.T, volume, dir, subDir, name, conflict string, body io.Reader) *httptest.ResponseRecorder {
+	t.Helper()
+	url := fmt.Sprintf("/api/volumes/%s/upload?path=%s&dir=%s&name=%s",
+		volume, dir, urlpkg.QueryEscape(subDir), name)
 	if conflict != "" {
 		url += "&conflict=" + conflict
 	}
@@ -288,5 +308,50 @@ func TestUploadSweepsAbandonedStagingFiles(t *testing.T) {
 	}
 	if _, err := os.Stat(orphan); !os.IsNotExist(err) {
 		t.Fatal("abandoned staging file was not swept")
+	}
+}
+
+func TestUploadCreatesFolderTree(t *testing.T) {
+	f := newUploadFixture(t)
+	rr := f.uploadInto(t, "rw", "", "Season 1/Extras", "clip.txt", "", strings.NewReader("nested"))
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rr.Code, rr.Body.String())
+	}
+	got, err := os.ReadFile(filepath.Join(f.rw, "Season 1", "Extras", "clip.txt"))
+	if err != nil || string(got) != "nested" {
+		t.Fatalf("nested upload: err=%v got=%q", err, got)
+	}
+
+	// A second file reuses the existing chain rather than failing on it.
+	rr = f.uploadInto(t, "rw", "", "Season 1/Extras", "clip2.txt", "", strings.NewReader("second"))
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("second nested upload: got %d: %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestUploadFolderTreeRejectsEscape(t *testing.T) {
+	f := newUploadFixture(t)
+	for _, dir := range []string{"..", "../outside", "/abs", "ok/../../escape"} {
+		rr := f.uploadInto(t, "rw", "", dir, "x.txt", "", strings.NewReader("x"))
+		if rr.Code < 400 {
+			t.Fatalf("dir %q accepted with %d", dir, rr.Code)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(f.rw), "escape")); !os.IsNotExist(err) {
+		t.Fatal("folder upload escaped the volume root")
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(f.rw), "x.txt")); !os.IsNotExist(err) {
+		t.Fatal("folder upload wrote outside the volume root")
+	}
+}
+
+func TestUploadFolderTreeRejectsReadOnlyVolume(t *testing.T) {
+	f := newUploadFixture(t)
+	rr := f.uploadInto(t, "ro", "", "New Folder", "x.txt", "", strings.NewReader("x"))
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", rr.Code)
+	}
+	if _, err := os.Stat(filepath.Join(f.ro, "New Folder")); !os.IsNotExist(err) {
+		t.Fatal("read-only volume got a new directory")
 	}
 }

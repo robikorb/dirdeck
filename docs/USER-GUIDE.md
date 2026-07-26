@@ -116,8 +116,17 @@ Uploads run one at a time with per-file progress and can be cancelled mid-file.
 If a name already exists you are asked what to do: skip it, keep both, replace
 it, or keep both for the rest of the batch.
 
-Folder upload is not supported yet. Dropping folders uploads nothing and tells
-you how many were skipped; drop the files inside them instead.
+**Folders work too.** Drop a folder and its whole tree is recreated at the
+destination, or press **Folder** to pick one. Subfolders and nesting are
+preserved. Empty directories inside the tree are not created, because the browser
+only reports files.
+
+Large trees show a running count instead of thousands of rows. Cancelling stops
+the current file; files already uploaded stay. Dropping the same folder again
+with **keep both** or **replace** is a usable way to finish an interrupted tree.
+
+Resumable upload is not implemented — a cancelled file restarts from the
+beginning rather than continuing.
 
 ## Editor
 

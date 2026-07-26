@@ -37,6 +37,8 @@ type uploadResponse struct {
 func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	volumeID := r.PathValue("id")
 	destDir := r.URL.Query().Get("path")
+	// Relative subdirectory inside the dropped tree; empty for a plain file drop.
+	subDir := strings.TrimSpace(r.URL.Query().Get("dir"))
 	name := strings.TrimSpace(r.URL.Query().Get("name"))
 	policy := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("conflict")))
 	if policy == "" {
@@ -67,6 +69,18 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.FS.EnsureWritableVolume(volumeID); err != nil {
 		writeFSError(w, err)
 		return
+	}
+
+	// Folder upload: create the chain the file lives in before writing it. Each
+	// component is validated by the same resolver used everywhere else, so a
+	// crafted "dir" cannot escape the volume.
+	if subDir != "" {
+		created, err := s.FS.MkdirAllRel(volumeID, destDir, subDir)
+		if err != nil {
+			writeFSError(w, err)
+			return
+		}
+		destDir = created
 	}
 
 	destRel, err := appfs.JoinRel(destDir, name)

@@ -14,6 +14,14 @@ after the first stable release.
   promoted with a single rename, so a dropped connection never leaves partial
   data under the real name. Folder upload is not included.
 
+### Added
+
+- **Folder upload.** Drop a folder and its whole tree is recreated at the
+  destination, or pick one with the new **Folder** button. The client walks the
+  tree and sends one request per file with its relative path; the server creates
+  each directory level through the same validated `mkdir` used everywhere else.
+  Large trees report a running count rather than thousands of progress rows.
+
 ### Fixed
 
 - The upload control is a labelled **Upload** button instead of an unlabelled

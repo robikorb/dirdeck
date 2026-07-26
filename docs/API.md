@@ -283,6 +283,7 @@ progress, and a cancelled request aborts exactly one file.
 |---|---|
 | `path` | Destination directory, relative to the volume root (empty = root) |
 | `name` | File name only. Separators, dot segments, and NUL bytes are rejected |
+| `dir` | Optional relative subdirectory inside `path`, created on demand. Used by folder upload |
 | `conflict` | `error` (default), `skip`, `replace`, or `rename` |
 
 Body: the raw file bytes. `Content-Length` is used for a free-space check before
@@ -304,7 +305,20 @@ name. A truncated body removes the staging file and returns `400`. Abandoned
 staging files from a killed process are swept when the folder is next used as an
 upload destination.
 
-Folder upload and resumable chunked upload are not implemented.
+### Folder upload
+
+The client walks a dropped directory tree and sends one request per file, each
+carrying its path inside the tree as `dir`. The server creates the missing chain
+with the same component-by-component validation used for a single `mkdir`, so a
+crafted `dir` cannot escape the volume root, and existing directories are reused
+rather than replaced.
+
+There is no separate mkdir endpoint and no batch manifest: a partially uploaded
+tree is simply a tree with fewer files in it, which is inspectable and resumable
+by dropping the folder again with a conflict policy.
+
+Resumable chunked upload is not implemented; a cancelled file restarts from the
+beginning.
 
 #### Resolve conflict — `POST /api/transfers/{id}/conflict`
 

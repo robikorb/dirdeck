@@ -52,7 +52,10 @@ The release candidate must be installable without unpublished local knowledge.
    progress, cancel one mid-file, and confirm no partial file and no
    `.dirdeck-upload-*` staging file survive. Repeat a name to exercise skip,
    keep both, replace, and keep-both-for-all. Confirm the upload control is
-   disabled on a read-only volume and that the API rejects it with `403`.
+   disabled on a read-only volume and that the API rejects it with `403`. Then
+   drop a nested folder and confirm the tree is recreated with its files, that
+   dropping it again with keep-both or replace behaves, and that a `dir`
+   containing `..` is rejected.
 4. Test batch copy, move, conflict apply-to-all, cancel, rename, editor save,
    and batch delete using fixture files only.
 5. Copy and cross-filesystem-move a fixture tree containing dotfiles and more

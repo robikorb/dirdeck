@@ -9,6 +9,7 @@ import {
   File,
   FileText,
   Folder,
+  FolderUp,
   HardDrive,
   Image as ImageIcon,
   LayoutGrid,
@@ -43,6 +44,8 @@ import {
   isImagePath,
   isEditablePath,
   uploadFile,
+  collectDroppedEntry,
+  relativeDirOf,
   isTextPreviewablePath,
   listDir,
   listFavorites,
@@ -74,6 +77,7 @@ import type {
   Favorite,
   FileMeta,
   RecentLocation,
+  PickedFile,
   TransferJob,
   UploadConflictAction,
   Volume,
@@ -231,6 +235,7 @@ function Thumb({
 type UploadItem = {
   id: string
   name: string
+  subDir: string
   loaded: number
   total: number
   status: 'pending' | 'uploading' | 'done' | 'skipped' | 'error'
@@ -288,6 +293,7 @@ function Pane({
   const uploadAllPolicy = useRef<UploadConflictAction | null>(null)
   const uploadAbort = useRef<(() => void) | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
   const paneBodyRef = useRef<HTMLDivElement>(null)
   const scrollFrameRef = useRef<number | null>(null)
   const [viewport, setViewport] = useState({ scrollTop: 0, width: 0, height: 0 })
@@ -532,20 +538,22 @@ function Pane({
 
   // Uploads run one at a time. A parallel queue would saturate a NAS link and
   // makes per-file progress meaningless.
-  const runUploads = useCallback(async (files: File[]) => {
-    if (!writable || files.length === 0) return
+  const runUploads = useCallback(async (picked: PickedFile[]) => {
+    if (!writable || picked.length === 0) return
     uploadAllPolicy.current = null
-    const queued: UploadItem[] = files.map((f, i) => ({
-      id: `${Date.now()}-${i}-${f.name}`,
-      name: f.name,
+    const queued: UploadItem[] = picked.map((p, i) => ({
+      id: `${Date.now()}-${i}-${p.subDir}/${p.file.name}`,
+      name: p.file.name,
+      subDir: p.subDir,
       loaded: 0,
-      total: f.size,
+      total: p.file.size,
       status: 'pending',
     }))
     setUploads(queued)
 
-    for (let i = 0; i < files.length; i += 1) {
-      const file = files[i]
+    for (let i = 0; i < picked.length; i += 1) {
+      const file = picked[i].file
+      const subDir = picked[i].subDir
       const item = queued[i]
       const patch = (fields: Partial<UploadItem>) =>
         setUploads((list) => list.map((u) => (u.id === item.id ? { ...u, ...fields } : u)))
@@ -556,6 +564,7 @@ function Pane({
         try {
           const { promise, abort } = uploadFile(state.volumeId, state.path, file, {
             conflict: conflictAction,
+            subDir,
             onProgress: (loaded, total) => patch({ loaded, total }),
           })
           uploadAbort.current = abort
@@ -613,33 +622,44 @@ function Pane({
     setDragActive(false)
     onActivate()
 
-    // webkitGetAsEntry is the only reliable way to tell a dropped folder from a
-    // file. Sniffing size/type would also throw away legitimately empty files,
-    // which the server accepts.
+    // Entries must be captured synchronously: the DataTransfer is invalidated
+    // once the event handler returns, so grab them before any await.
+    const entries: FileSystemEntry[] = []
+    const plainFiles: File[] = []
     const items = Array.from(event.dataTransfer.items ?? [])
-    const files: File[] = []
-    let folders = 0
     if (items.length > 0 && typeof items[0].webkitGetAsEntry === 'function') {
       for (const item of items) {
         if (item.kind !== 'file') continue
         const entry = item.webkitGetAsEntry()
-        if (entry?.isDirectory) {
-          folders += 1
-          continue
+        if (entry) entries.push(entry)
+        else {
+          const file = item.getAsFile()
+          if (file) plainFiles.push(file)
         }
-        const file = item.getAsFile()
-        if (file) files.push(file)
       }
     } else {
-      files.push(...Array.from(event.dataTransfer.files))
+      plainFiles.push(...Array.from(event.dataTransfer.files))
     }
 
-    setDropNotice(
-      folders > 0
-        ? `Folder upload is not supported yet — skipped ${folders} folder${folders > 1 ? 's' : ''}.`
-        : null,
-    )
-    void runUploads(files)
+    void (async () => {
+      const picked: PickedFile[] = plainFiles.map((file) => ({ file, subDir: '' }))
+      try {
+        setDropNotice(entries.some((e) => e.isDirectory) ? 'Reading dropped folders…' : null)
+        for (const entry of entries) {
+          await collectDroppedEntry(entry, '', picked)
+        }
+      } catch {
+        setDropNotice('Could not read one of the dropped folders.')
+        return
+      }
+      const folders = new Set(picked.filter((p) => p.subDir).map((p) => p.subDir.split('/')[0]))
+      setDropNotice(
+        folders.size > 0
+          ? `${picked.length} file${picked.length > 1 ? 's' : ''} from ${folders.size} folder${folders.size > 1 ? 's' : ''}.`
+          : null,
+      )
+      await runUploads(picked)
+    })()
   }
 
   function handlePaneScroll(event: React.UIEvent<HTMLDivElement>) {
@@ -686,6 +706,17 @@ function Pane({
             <Upload size={15} aria-hidden />
             <span>Upload</span>
           </button>
+          <button
+            type="button"
+            className="upload-btn"
+            aria-label="Upload a folder"
+            title={writable ? 'Upload a folder and its contents' : 'Volume is read-only'}
+            disabled={!writable}
+            onClick={() => folderInputRef.current?.click()}
+          >
+            <FolderUp size={15} aria-hidden />
+            <span>Folder</span>
+          </button>
           <input
             ref={fileInputRef}
             type="file"
@@ -694,7 +725,20 @@ function Pane({
             onChange={(event) => {
               const files = Array.from(event.target.files ?? [])
               event.target.value = ''
-              void runUploads(files)
+              void runUploads(files.map((file) => ({ file, subDir: relativeDirOf(file) })))
+            }}
+          />
+          <input
+            ref={folderInputRef}
+            type="file"
+            multiple
+            hidden
+            // webkitdirectory has no typed JSX attribute; the picker needs it set.
+            {...{ webkitdirectory: '', directory: '' }}
+            onChange={(event) => {
+              const files = Array.from(event.target.files ?? [])
+              event.target.value = ''
+              void runUploads(files.map((file) => ({ file, subDir: relativeDirOf(file) })))
             }}
           />
           <button
@@ -961,9 +1005,29 @@ function Pane({
       </div>
       {uploads.length > 0 ? (
         <div className="upload-strip" role="status" aria-label="Upload progress">
-          {uploads.map((u) => (
+          {uploads.length > 6 ? (
+            <div className="upload-summary">
+              <span>
+                {uploads.filter((u) => u.status === 'done' || u.status === 'skipped').length} of{' '}
+                {uploads.length} uploaded
+              </span>
+              {uploads.some((u) => u.status === 'error') ? (
+                <span className="upload-failed">
+                  {uploads.filter((u) => u.status === 'error').length} failed
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {(uploads.length > 6
+            ? uploads.filter(
+                (u) => u.status === 'uploading' || u.status === 'error',
+              ).slice(0, 6)
+            : uploads
+          ).map((u) => (
             <div key={u.id} className={`upload-row upload-${u.status}`}>
-              <span className="upload-name" title={u.name}>{u.name}</span>
+              <span className="upload-name" title={u.subDir ? `${u.subDir}/${u.name}` : u.name}>
+                {u.subDir ? `${u.subDir}/${u.name}` : u.name}
+              </span>
               {u.status === 'uploading' ? (
                 <span className="upload-bar">
                   <span

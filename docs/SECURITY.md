@@ -144,6 +144,9 @@ Uploads are untrusted input arriving under a client-chosen name.
   clobbered.
 - Declared sizes are checked against free space before writing.
 - Abandoned staging files are swept when the destination folder is next used.
+- Folder upload creates directories one validated component at a time through
+  the same resolver as `mkdir`. A `dir` containing `..`, an absolute path, or a
+  traversal sequence is rejected before anything is created.
 
 Trash, synchronization, arbitrary archives, and terminal access are outside the
 initial implementation.
@@ -261,7 +264,9 @@ Before write operations are enabled, automated tests must cover:
 - hidden-file and beyond-display-limit directory copy/move behavior;
 - authentication, session expiry, CSRF, and login rate limiting;
 - upload name validation, read-only rejection, conflict policies, truncated
-  bodies, zero-byte files, and staging-file cleanup.
+  bodies, zero-byte files, and staging-file cleanup;
+- folder-upload directory creation, reuse of an existing chain, traversal
+  rejection, and read-only refusal before any directory is created.
 
 Phase 3 adds coverage for thumbnail byte/pixel/concurrency limits, preference
 path rejection, listing truncation, unavailable-mount responses, text preview

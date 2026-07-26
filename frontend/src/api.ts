@@ -442,10 +442,13 @@ export function uploadFile(
   file: File,
   options: {
     conflict?: UploadConflictAction
+    /** Relative subdirectory inside a dropped folder; the server creates it. */
+    subDir?: string
     onProgress?: (loaded: number, total: number) => void
   } = {},
 ): { promise: Promise<UploadOutcome>; abort: () => void } {
   const q = new URLSearchParams({ path: destDir, name: file.name })
+  if (options.subDir) q.set('dir', options.subDir)
   if (options.conflict) q.set('conflict', options.conflict)
   const xhr = new XMLHttpRequest()
 
@@ -486,4 +489,53 @@ export function uploadFile(
   })
 
   return { promise, abort: () => xhr.abort() }
+}
+
+
+/** One file from a dropped tree, with its path relative to the drop target. */
+export type PickedFile = { file: File; subDir: string }
+
+/**
+ * Walks a dropped FileSystemEntry into a flat list of files plus their relative
+ * directories.
+ *
+ * readEntries returns a bounded batch (about 100) and must be called until it
+ * yields nothing — a single call silently truncates large folders, which for an
+ * upload would mean quietly losing files.
+ */
+export async function collectDroppedEntry(
+  entry: FileSystemEntry,
+  parentDir = '',
+  out: PickedFile[] = [],
+): Promise<PickedFile[]> {
+  if (entry.isFile) {
+    const file = await new Promise<File>((resolve, reject) =>
+      (entry as FileSystemFileEntry).file(resolve, reject),
+    )
+    out.push({ file, subDir: parentDir })
+    return out
+  }
+  if (entry.isDirectory) {
+    const dir = parentDir ? `${parentDir}/${entry.name}` : entry.name
+    const reader = (entry as FileSystemDirectoryEntry).createReader()
+    for (;;) {
+      const batch = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+        reader.readEntries(resolve, reject),
+      )
+      if (batch.length === 0) break
+      for (const child of batch) {
+        await collectDroppedEntry(child, dir, out)
+      }
+    }
+  }
+  return out
+}
+
+/** Splits a webkitRelativePath ("Folder/Sub/file.txt") into its directory part. */
+export function relativeDirOf(file: File): string {
+  const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath
+  if (!rel) return ''
+  const parts = rel.split('/')
+  parts.pop()
+  return parts.join('/')
 }

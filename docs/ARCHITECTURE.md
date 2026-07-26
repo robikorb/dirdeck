@@ -210,8 +210,16 @@ buffer server-side, hide per-file progress, and make cancellation all-or-nothing
 The server has no overall read deadline, because a fixed one would kill long
 uploads mid-transfer. `ReadHeaderTimeout` still bounds slow-header attacks.
 
-Folder upload and resumable chunked upload are deliberately deferred until plain
-upload has proven itself.
+Folder upload walks the dropped tree in the browser and sends one request per
+file with its relative directory. `readEntries` returns a bounded batch and must
+be called until it yields nothing; a single call silently truncates large folders,
+which for an upload means quietly losing files. Directory creation is
+component-by-component through the same validated `Mkdir`, so there is no second
+path into the filesystem to secure.
+
+Resumable chunked upload remains deferred. It needs a server-side session, an
+offset protocol, and orphan expiry — a meaningful amount of state for a feature
+that plain retry already covers.
 
 ### Permanent delete — implemented
 

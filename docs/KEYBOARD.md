@@ -18,6 +18,7 @@ in inputs or using the editor.
 | `↑` / `↓` | Replace selection with the previous or next item |
 | `Enter` | Open the single selected folder or editable text file |
 | `Backspace` | Go to parent folder |
+| `F7` | New folder in the active pane |
 | `F2` | Rename selected file or folder |
 | `Delete` | Open permanent-delete confirmation for the selected item |
 | `F5` | Copy selection to the other pane |

@@ -38,6 +38,7 @@ All require authentication. Paths are **relative to the volume root** (empty or
 | `GET` | `/api/volumes/{id}/preview` | `path`, optional `kind` | inline media **or** JSON text/docx preview (Phase 3+) |
 | `GET` | `/api/volumes/{id}/content` | `path` | Raw bounded UTF-8 content for the editor |
 | `PUT` | `/api/volumes/{id}/content` | `path` | Atomically save `{ content, expectedModTime }` |
+| `POST` | `/api/volumes/{id}/folder` | — | Create one directory `{ path, name }` → `201` |
 | `POST` | `/api/volumes/{id}/rename` | — | Rename `{ path, newName }` without replacement |
 | `DELETE` | `/api/volumes/{id}/entry` | — | Permanently delete `{ paths: [] }`; recursive for folders |
 
@@ -119,6 +120,12 @@ Writes require a writable volume and CSRF. `expectedModTime` provides optimistic
 concurrency, returning `409` if the file changed after opening. Saving stages the
 new content in the same directory, flushes it, then atomically renames it over
 the original.
+
+Create-folder makes exactly one directory inside an existing folder. `name` is
+validated as a single path component. An existing file **or** directory with that
+name returns `409` rather than succeeding silently: the internal `Mkdir` treats an
+existing directory as success because recursive copy reuses the chain, which would
+make the user-facing action appear to do nothing.
 
 Rename is limited to one name component in the existing parent folder. It
 rejects separators, traversal, volume roots, symlinks, read-only volumes, and

@@ -9,6 +9,7 @@ import {
   File,
   FileText,
   Folder,
+  FolderPlus,
   FolderUp,
   HardDrive,
   Image as ImageIcon,
@@ -36,6 +37,7 @@ import {
   addFavorite,
   cancelTransfer,
   clearRecent,
+  createFolder,
   createCopy,
   createMove,
   deleteEntries,
@@ -75,6 +77,7 @@ import {
 import { renderSafeMarkdown } from './markdown'
 import DeleteModal from './DeleteModal'
 import RenameModal from './RenameModal'
+import NewFolderModal from './NewFolderModal'
 import type { EditorDocument } from './EditorModal'
 import type {
   ConflictAction,
@@ -268,6 +271,7 @@ function Pane({
   onActivate,
   otherPaneName,
   rowHeight,
+  onNewFolder,
   canCopySelection,
   canMoveSelection,
   canRenameSelection,
@@ -288,6 +292,7 @@ function Pane({
   onActivate: () => void
   otherPaneName: string
   rowHeight: number
+  onNewFolder: () => void
   canCopySelection: boolean
   canMoveSelection: boolean
   canRenameSelection: boolean
@@ -758,6 +763,19 @@ function Pane({
           </button>
           <button
             type="button"
+            className="icon-btn"
+            aria-label="New folder"
+            title={writable ? 'New folder (F7)' : 'Volume is read-only'}
+            disabled={!writable}
+            onClick={() => {
+              onActivate()
+              onNewFolder()
+            }}
+          >
+            <FolderPlus size={16} />
+          </button>
+          <button
+            type="button"
             className="upload-btn secondary"
             aria-label="Upload a folder"
             title={writable ? 'Upload a folder and its contents' : 'Volume is read-only'}
@@ -901,9 +919,14 @@ function Pane({
               <>
                 <Upload size={26} aria-hidden />
                 <p>Drop files here to upload</p>
-                <button type="button" className="text-btn" onClick={() => fileInputRef.current?.click()}>
-                  or choose files
-                </button>
+                <div className="empty-folder-actions">
+                  <button type="button" className="text-btn" onClick={() => fileInputRef.current?.click()}>
+                    choose files
+                  </button>
+                  <button type="button" className="text-btn" onClick={onNewFolder}>
+                    create a folder
+                  </button>
+                </div>
               </>
             ) : (
               <p className="muted">This folder is empty.</p>
@@ -1386,6 +1409,9 @@ export default function App() {
   const [editorModTime, setEditorModTime] = useState('')
   const [editorSaving, setEditorSaving] = useState(false)
   const [editorError, setEditorError] = useState<string | null>(null)
+  const [newFolderPane, setNewFolderPane] = useState<ActivePane | null>(null)
+  const [newFolderBusy, setNewFolderBusy] = useState(false)
+  const [newFolderError, setNewFolderError] = useState<string | null>(null)
   const [renameTarget, setRenameTarget] = useState<{
     volumeId: string
     path: string
@@ -1714,6 +1740,25 @@ export default function App() {
     }
   }, [editorDocument, editorModTime, editorVolumeId, refreshPanes])
 
+  const performCreateFolder = useCallback(async (name: string) => {
+    const pane = newFolderPane
+    if (!pane) return
+    const state = pane === 'left' ? left : right
+    setNewFolderBusy(true)
+    setNewFolderError(null)
+    try {
+      await createFolder(state.volumeId, state.path, name)
+      const apply = (current: typeof left) => ({ ...current, reloadToken: current.reloadToken + 1 })
+      if (pane === 'left') setLeft(apply)
+      else setRight(apply)
+      setNewFolderPane(null)
+    } catch (err) {
+      setNewFolderError(err instanceof Error ? err.message : 'Could not create the folder')
+    } finally {
+      setNewFolderBusy(false)
+    }
+  }, [newFolderPane, left, right])
+
   const openRename = useCallback(() => {
     const pane = activePane === 'left' ? left : right
     const volume = volumes.find((item) => item.id === pane.volumeId)
@@ -1914,7 +1959,7 @@ export default function App() {
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return
       }
-      if (editorDocument || renameTarget || deleteTarget) return
+      if (editorDocument || renameTarget || deleteTarget || newFolderPane) return
       const pane = activePane === 'left' ? left : right
       const setPane = activePane === 'left' ? setLeft : setRight
 
@@ -1926,6 +1971,16 @@ export default function App() {
       if (e.key === 'F6') {
         e.preventDefault()
         void moveSelection(activePane === 'left' ? 'ltr' : 'rtl')
+        return
+      }
+      if (e.key === 'F7') {
+        e.preventDefault()
+        const target = activePane === 'left' ? left : right
+        const vol = volumes.find((v) => v.id === target.volumeId)
+        if (vol && !vol.readOnly && vol.available) {
+          setNewFolderError(null)
+          setNewFolderPane(activePane)
+        }
         return
       }
       if (e.key === 'F2') {
@@ -2325,6 +2380,7 @@ export default function App() {
         onActivate={() => setActivePane('left')}
         otherPaneName={rightVol?.name ?? 'right pane'}
         rowHeight={ROW_HEIGHT[density]}
+        onNewFolder={() => { setNewFolderError(null); setNewFolderPane('left') }}
         canCopySelection={canCopyRight}
         canMoveSelection={canMoveRight}
         canRenameSelection={canRename}
@@ -2415,6 +2471,7 @@ export default function App() {
         onActivate={() => setActivePane('right')}
         otherPaneName={leftVol?.name ?? 'left pane'}
         rowHeight={ROW_HEIGHT[density]}
+        onNewFolder={() => { setNewFolderError(null); setNewFolderPane('right') }}
         canCopySelection={canCopyLeft}
         canMoveSelection={canMoveLeft}
         canRenameSelection={canRename}
@@ -2548,6 +2605,18 @@ export default function App() {
         </div>
       )}
     </div>
+      {newFolderPane ? (
+        <NewFolderModal
+          location={(newFolderPane === 'left' ? left : right).path}
+          busy={newFolderBusy}
+          error={newFolderError}
+          onCreate={(name) => void performCreateFolder(name)}
+          onClose={() => {
+            setNewFolderPane(null)
+            setNewFolderError(null)
+          }}
+        />
+      ) : null}
       {renameTarget ? (
         <RenameModal
           currentName={renameTarget.name}

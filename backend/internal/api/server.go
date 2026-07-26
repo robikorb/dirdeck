@@ -83,6 +83,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/volumes/{id}/rename", s.requireAuth(s.requireCSRF(s.handleRename)))
 	mux.HandleFunc("DELETE /api/volumes/{id}/entry", s.requireAuth(s.requireCSRF(s.handleDeleteEntry)))
 	mux.HandleFunc("POST /api/volumes/{id}/upload", s.requireAuth(s.requireCSRF(s.handleUpload)))
+	mux.HandleFunc("POST /api/volumes/{id}/folder", s.requireAuth(s.requireCSRF(s.handleCreateFolder)))
 
 	mux.HandleFunc("GET /api/favorites", s.requireAuth(s.handleFavoritesList))
 	mux.HandleFunc("POST /api/favorites", s.requireAuth(s.requireCSRF(s.handleFavoriteCreate)))

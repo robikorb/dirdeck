@@ -295,6 +295,17 @@ root element lets an explicit choice win in either direction. Every surface read
 tokens — no component hard-codes a colour — which is what makes a second theme a
 palette change rather than a rewrite.
 
+Both light blocks — the `prefers-color-scheme` one and the explicit
+`data-theme='light'` one — must carry an identical declaration set. They are
+separate rules because one applies by preference and the other by choice, and a
+token present in only one of them silently falls back to the dark value. That is
+exactly how the first attempt shipped dark dialogs to light-theme users.
+
+Only the Monaco editor window keeps hard-coded colours, deliberately: it is themed
+in `EditorModal.tsx` and a light editor needs a matching Monaco theme. Everything
+else reads tokens, which is verifiable by scanning the stylesheet outside the token
+blocks.
+
 Accent colour needs two tokens. `--accent` is for fills, borders, and focus
 rings; `--accent-text` is the lighter value used when the accent is text, because
 the fill colour measures 4.30:1 on `--bg-panel-strong` and fails AA. Contrast for

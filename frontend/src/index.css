@@ -25,6 +25,23 @@
   --danger: #f87171;
   --header-bg: rgba(20, 24, 36, 0.9);
   --row-line: rgba(255, 255, 255, 0.04);
+  --scrim: rgba(4, 6, 12, 0.72);
+  --surface-dialog: rgba(22, 26, 39, 0.96);
+  --surface-raised: rgba(18, 23, 36, 0.98);
+  --surface-sunken: rgba(0, 0, 0, 0.3);
+  --surface-inset: rgba(255, 255, 255, 0.06);
+  --shadow-strong: var(--shadow-strong);
+  --track: rgba(255, 255, 255, 0.08);
+  --warn: #fbbf24;
+  --warn-bg: rgba(251, 191, 36, 0.1);
+  --success: #86e39b;
+  --danger-text: var(--danger-text);
+  --danger-bg: rgba(185, 28, 28, 0.24);
+  --danger-border: rgba(248, 113, 113, 0.22);
+  --link: #93c5fd;
+  --danger-solid: #b91c1c;
+  --danger-solid-hover: #dc2626;
+  --danger-on-solid: #fee2e2;
   --radius: 14px;
   /* Row height is the density setting. App.tsx writes it here and uses the same
      number for row virtualization; the two must never diverge. */
@@ -64,6 +81,40 @@
     --danger: #b91c1c;
     --header-bg: rgba(248, 250, 253, 0.92);
     --row-line: rgba(15, 23, 42, 0.06);
+    --scrim: rgba(23, 32, 53, 0.42);
+    --surface-dialog: rgba(255, 255, 255, 0.98);
+    --surface-raised: rgba(255, 255, 255, 0.99);
+    --surface-sunken: rgba(15, 23, 42, 0.05);
+    --surface-inset: rgba(15, 23, 42, 0.05);
+    --shadow-strong: rgba(23, 32, 53, 0.22);
+    --track: rgba(15, 23, 42, 0.1);
+    --warn: #92500e;
+    --warn-bg: rgba(217, 119, 6, 0.12);
+    --success: #15803d;
+    --danger-text: #b91c1c;
+    --danger-bg: rgba(185, 28, 28, 0.1);
+    --danger-border: rgba(185, 28, 28, 0.28);
+    --link: #1d4ed8;
+    --danger-solid: #b91c1c;
+    --danger-solid-hover: #991b1b;
+    --danger-on-solid: #fff1f1;
+  --danger-solid: #b91c1c;
+  --danger-solid-hover: #991b1b;
+  --danger-on-solid: #fff1f1;
+  --scrim: rgba(23, 32, 53, 0.42);
+  --surface-dialog: rgba(255, 255, 255, 0.98);
+  --surface-raised: rgba(255, 255, 255, 0.99);
+  --surface-sunken: rgba(15, 23, 42, 0.05);
+  --surface-inset: rgba(15, 23, 42, 0.05);
+  --shadow-strong: rgba(23, 32, 53, 0.22);
+  --track: rgba(15, 23, 42, 0.1);
+  --warn: #92500e;
+  --warn-bg: rgba(217, 119, 6, 0.12);
+  --success: #15803d;
+  --danger-text: #b91c1c;
+  --danger-bg: rgba(185, 28, 28, 0.1);
+  --danger-border: rgba(185, 28, 28, 0.28);
+  --link: #1d4ed8;
   }
 }
 
@@ -71,9 +122,9 @@
   color-scheme: light;
   --bg-deep: #eef1f7;
   --bg-body:
-    radial-gradient(1200px 700px at 15% 10%, rgba(120, 156, 224, 0.22), transparent 55%),
-    radial-gradient(900px 600px at 85% 80%, rgba(90, 130, 200, 0.18), transparent 50%),
-    linear-gradient(160deg, #f3f6fc 0%, #e8ecf5 55%, #eef2fa 100%);
+  radial-gradient(1200px 700px at 15% 10%, rgba(120, 156, 224, 0.22), transparent 55%),
+  radial-gradient(900px 600px at 85% 80%, rgba(90, 130, 200, 0.18), transparent 50%),
+  linear-gradient(160deg, #f3f6fc 0%, #e8ecf5 55%, #eef2fa 100%);
   --bg-panel: rgba(255, 255, 255, 0.72);
   --bg-panel-strong: rgba(255, 255, 255, 0.88);
   --bg-hover: rgba(15, 23, 42, 0.05);
@@ -91,6 +142,40 @@
   --danger: #b91c1c;
   --header-bg: rgba(248, 250, 253, 0.92);
   --row-line: rgba(15, 23, 42, 0.06);
+  --scrim: rgba(23, 32, 53, 0.42);
+  --surface-dialog: rgba(255, 255, 255, 0.98);
+  --surface-raised: rgba(255, 255, 255, 0.99);
+  --surface-sunken: rgba(15, 23, 42, 0.05);
+  --surface-inset: rgba(15, 23, 42, 0.05);
+  --shadow-strong: rgba(23, 32, 53, 0.22);
+  --track: rgba(15, 23, 42, 0.1);
+  --warn: #92500e;
+  --warn-bg: rgba(217, 119, 6, 0.12);
+  --success: #15803d;
+  --danger-text: #b91c1c;
+  --danger-bg: rgba(185, 28, 28, 0.1);
+  --danger-border: rgba(185, 28, 28, 0.28);
+  --link: #1d4ed8;
+  --danger-solid: #b91c1c;
+  --danger-solid-hover: #991b1b;
+  --danger-on-solid: #fff1f1;
+  --danger-solid: #b91c1c;
+  --danger-solid-hover: #991b1b;
+  --danger-on-solid: #fff1f1;
+  --scrim: rgba(23, 32, 53, 0.42);
+  --surface-dialog: rgba(255, 255, 255, 0.98);
+  --surface-raised: rgba(255, 255, 255, 0.99);
+  --surface-sunken: rgba(15, 23, 42, 0.05);
+  --surface-inset: rgba(15, 23, 42, 0.05);
+  --shadow-strong: rgba(23, 32, 53, 0.22);
+  --track: rgba(15, 23, 42, 0.1);
+  --warn: #92500e;
+  --warn-bg: rgba(217, 119, 6, 0.12);
+  --success: #15803d;
+  --danger-text: #b91c1c;
+  --danger-bg: rgba(185, 28, 28, 0.1);
+  --danger-border: rgba(185, 28, 28, 0.28);
+  --link: #1d4ed8;
 }
 
 :root[data-theme='dark'] {
@@ -120,6 +205,23 @@
   --danger: #f87171;
   --header-bg: rgba(20, 24, 36, 0.9);
   --row-line: rgba(255, 255, 255, 0.04);
+  --scrim: rgba(4, 6, 12, 0.72);
+  --surface-dialog: rgba(22, 26, 39, 0.96);
+  --surface-raised: rgba(18, 23, 36, 0.98);
+  --surface-sunken: rgba(0, 0, 0, 0.3);
+  --surface-inset: rgba(255, 255, 255, 0.06);
+  --shadow-strong: var(--shadow-strong);
+  --track: rgba(255, 255, 255, 0.08);
+  --warn: #fbbf24;
+  --warn-bg: rgba(251, 191, 36, 0.1);
+  --success: #86e39b;
+  --danger-text: var(--danger-text);
+  --danger-bg: rgba(185, 28, 28, 0.24);
+  --danger-border: rgba(248, 113, 113, 0.22);
+  --link: #93c5fd;
+  --danger-solid: #b91c1c;
+  --danger-solid-hover: #dc2626;
+  --danger-on-solid: #fee2e2;
 }
 
 * {
@@ -211,7 +313,7 @@ input:focus-visible,
     right: 14px;
     bottom: 14px;
     width: min(360px, calc(100vw - 28px));
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 24px 80px var(--shadow-strong);
   }
   /* No `inspector` grid area exists below this width; the rail would create an
      implicit track. The centre transfer strip keeps the toggle here. */
@@ -568,7 +670,7 @@ input:focus-visible,
   height: 48px;
   margin: 0 auto 8px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-inset);
   display: grid;
   place-items: center;
   color: var(--text-muted);
@@ -593,8 +695,8 @@ input:focus-visible,
   padding: 6px;
   border: 1px solid var(--border-strong);
   border-radius: 12px;
-  background: rgba(18, 23, 36, 0.98);
-  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.42);
+  background: var(--surface-raised);
+  box-shadow: 0 20px 55px var(--shadow-strong);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   user-select: none;
@@ -639,12 +741,12 @@ input:focus-visible,
 }
 
 .entry-context-menu .context-menu-danger {
-  color: #fca5a5;
+  color: var(--danger-text);
 }
 
 .entry-context-menu .context-menu-danger:hover:not(:disabled) {
-  color: #fecaca;
-  background: rgba(239, 68, 68, 0.14);
+  color: var(--danger-text);
+  background: var(--danger-bg);
 }
 
 .context-menu-separator {
@@ -739,7 +841,7 @@ input:focus-visible,
 .transfer-progress {
   height: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--track);
   overflow: hidden;
   margin: 4px 0;
 }
@@ -859,7 +961,7 @@ input:focus-visible,
   width: 52px;
   height: 52px;
   border-radius: 13px;
-  box-shadow: 0 10px 28px rgba(12, 40, 94, 0.46);
+  box-shadow: 0 10px 28px var(--shadow-strong);
 }
 
 .login-brand > div {
@@ -869,7 +971,7 @@ input:focus-visible,
 }
 
 .login-brand span {
-  color: #81b8ff;
+  color: var(--accent-text);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.18em;
@@ -892,7 +994,7 @@ input:focus-visible,
 
 .login-card input {
   border: 1px solid var(--border-strong);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--surface-sunken);
   color: var(--text);
   border-radius: 10px;
   padding: 10px 12px;
@@ -948,12 +1050,12 @@ input:focus-visible,
 
 .pane-active {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 0 1px rgba(59, 130, 246, 0.35);
+    inset 0 1px 0 var(--glass-highlight),
+    0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .badge-warn {
-  color: #fbbf24;
+  color: var(--warn);
   font-weight: 500;
   font-size: 12px;
 }
@@ -961,7 +1063,7 @@ input:focus-visible,
 .grid-icon.thumb {
   padding: 0;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--surface-sunken);
 }
 
 .grid-icon.thumb img {
@@ -976,7 +1078,7 @@ input:focus-visible,
   aspect-ratio: 4 / 3;
   border-radius: 12px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-sunken);
   border: 1px solid var(--border);
 }
 
@@ -993,7 +1095,7 @@ input:focus-visible,
   max-height: 280px;
   border-radius: 12px;
   overflow: auto;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-sunken);
   border: 1px solid var(--border);
   padding: 10px 12px;
   margin-bottom: 4px;
@@ -1002,7 +1104,7 @@ input:focus-visible,
 .preview-truncated {
   margin: 0 0 8px;
   font-size: 11px;
-  color: #fbbf24;
+  color: var(--warn);
 }
 
 .preview-code,
@@ -1064,7 +1166,7 @@ input:focus-visible,
 .preview-markdown code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.9em;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-inset);
   padding: 0.1em 0.35em;
   border-radius: 4px;
 }
@@ -1073,7 +1175,7 @@ input:focus-visible,
   margin: 0 0 0.65em;
   padding: 8px 10px;
   overflow: auto;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-sunken);
   border-radius: 8px;
   border: 1px solid var(--border);
 }
@@ -1084,7 +1186,7 @@ input:focus-visible,
 }
 
 .preview-markdown a {
-  color: #93c5fd;
+  color: var(--link);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -1234,7 +1336,7 @@ input:focus-visible,
 
 .side-label em {
   font-style: normal;
-  color: #fbbf24;
+  color: var(--warn);
   opacity: 0.9;
 }
 
@@ -1280,7 +1382,7 @@ input:focus-visible,
   margin: 0 0 8px;
   padding: 6px 8px;
   border-radius: 8px;
-  background: rgba(251, 191, 36, 0.08);
+  background: var(--warn-bg);
 }
 
 .shortcuts-hint {
@@ -1296,10 +1398,14 @@ input:focus-visible,
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(4, 6, 12, 0.72);
+  background: var(--scrim);
   backdrop-filter: blur(16px) saturate(0.8);
 }
 
+/* The editor window deliberately stays dark in both themes. Monaco is themed
+   separately in EditorModal.tsx ('dirdeck-dark'); a light editor needs a matching
+   Monaco theme, so the chrome here is kept consistent with the editor surface
+   rather than half-converted. */
 .editor-window {
   position: relative;
   width: min(1500px, 96vw);
@@ -1348,15 +1454,15 @@ input:focus-visible,
 }
 
 .dirty-dot {
-  color: #60a5fa;
+  color: var(--accent-text);
   font-size: 10px;
 }
 
 .editor-badge {
   padding: 2px 7px;
   border-radius: 999px;
-  color: #fbbf24;
-  background: rgba(251, 191, 36, 0.1);
+  color: var(--warn);
+  background: var(--warn-bg);
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1398,7 +1504,7 @@ input:focus-visible,
   border-radius: 8px;
   padding: 7px 12px;
   color: white;
-  background: #2563eb;
+  background: var(--accent-fill);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
@@ -1419,9 +1525,9 @@ input:focus-visible,
 .editor-error {
   flex: 0 0 auto;
   padding: 8px 14px;
-  color: #fecaca;
-  background: rgba(127, 29, 29, 0.42);
-  border-bottom: 1px solid rgba(248, 113, 113, 0.22);
+  color: var(--danger-text);
+  background: var(--danger-bg);
+  border-bottom: 1px solid var(--danger-border);
   font-size: 12px;
 }
 
@@ -1481,10 +1587,10 @@ input:focus-visible,
   gap: 12px;
   padding: 14px;
   color: var(--text);
-  background: rgba(24, 28, 39, 0.98);
+  background: var(--surface-dialog);
   border: 1px solid var(--border-strong);
   border-radius: 12px;
-  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 20px 70px var(--shadow-strong);
 }
 
 .editor-confirm > div {
@@ -1500,14 +1606,14 @@ input:focus-visible,
 }
 
 .dialog-danger {
-  background: #b91c1c;
+  background: var(--danger-solid);
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
 .dialog-danger:hover:not(:disabled) {
-  background: #dc2626;
+  background: var(--danger-solid-hover);
 }
 
 .dialog-danger:disabled {
@@ -1522,8 +1628,8 @@ input:focus-visible,
 .rename-dialog {
   width: min(480px, calc(100vw - 32px));
   padding: 16px;
-  background: rgba(22, 26, 39, 0.96);
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.65);
+  background: var(--surface-dialog);
+  box-shadow: 0 28px 90px var(--shadow-strong);
 }
 
 .rename-dialog header,
@@ -1554,7 +1660,7 @@ input:focus-visible,
   width: 100%;
   padding: 10px 12px;
   color: var(--text);
-  background: rgba(4, 7, 13, 0.62);
+  background: var(--surface-sunken);
   border: 1px solid var(--border-strong);
   border-radius: 9px;
 }
@@ -1566,21 +1672,21 @@ input:focus-visible,
 }
 
 .delete-tool:not(:disabled) {
-  color: #fca5a5;
+  color: var(--danger-text);
 }
 
 .delete-tool:not(:disabled):hover {
-  color: #fee2e2;
-  background: rgba(185, 28, 28, 0.3);
-  border-color: rgba(248, 113, 113, 0.34);
+  color: var(--danger-on-solid);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
 }
 
 .delete-dialog {
   width: min(500px, calc(100vw - 32px));
   padding: 18px;
-  background: rgba(22, 26, 39, 0.98);
-  border-color: rgba(248, 113, 113, 0.2);
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.68);
+  background: var(--surface-dialog);
+  border-color: var(--danger-border);
+  box-shadow: 0 28px 90px var(--shadow-strong);
 }
 
 .delete-dialog header,
@@ -1597,7 +1703,7 @@ input:focus-visible,
   padding: 9px 10px 9px 28px;
   overflow: auto;
   color: var(--text-muted);
-  background: rgba(4, 7, 13, 0.38);
+  background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: 9px;
   font-family: var(--mono);
@@ -1629,9 +1735,9 @@ input:focus-visible,
   width: 34px;
   height: 34px;
   place-items: center;
-  color: #fca5a5 !important;
-  background: rgba(185, 28, 28, 0.22);
-  border: 1px solid rgba(248, 113, 113, 0.22);
+  color: var(--danger-text) !important;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
   border-radius: 9px;
 }
 
@@ -1661,9 +1767,9 @@ input:focus-visible,
   gap: 7px;
   margin-top: 12px !important;
   padding: 10px 11px;
-  color: #fecaca;
-  background: rgba(127, 29, 29, 0.25);
-  border: 1px solid rgba(248, 113, 113, 0.16);
+  color: var(--danger-text);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
   border-radius: 9px;
 }
 
@@ -1703,7 +1809,7 @@ input:focus-visible,
 .pane-body.drop-active {
   outline: 2px dashed var(--accent);
   outline-offset: -6px;
-  background: rgba(59, 130, 246, 0.06);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .drop-hint {
@@ -1769,7 +1875,7 @@ input:focus-visible,
 }
 
 .upload-done .upload-status {
-  color: #86e39b;
+  color: var(--success);
 }
 
 .upload-error .upload-status {
@@ -1911,7 +2017,7 @@ input:focus-visible,
 }
 
 .upload-stop:hover {
-  background: rgba(248, 113, 113, 0.14);
+  background: var(--danger-bg);
 }
 
 .upload-cancelled .upload-status {
@@ -1948,4 +2054,14 @@ input:focus-visible,
   background: var(--bg-selected);
   border-color: var(--border-strong);
   color: var(--accent-text);
+}
+
+.empty-folder-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.dialog-hint {
+  margin: 0;
+  font-size: 12px;
 }

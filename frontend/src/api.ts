@@ -539,3 +539,14 @@ export function relativeDirOf(file: File): string {
   parts.pop()
   return parts.join('/')
 }
+
+export async function createFolder(
+  volumeId: string,
+  path: string,
+  name: string,
+): Promise<FileMeta> {
+  return request<FileMeta>(`/api/volumes/${encodeURIComponent(volumeId)}/folder`, {
+    method: 'POST',
+    body: JSON.stringify({ path, name }),
+  })
+}

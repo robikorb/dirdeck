@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	appfs "github.com/robikorb/dirdeck/backend/internal/fs"
 	"github.com/robikorb/dirdeck/backend/internal/preview"
 )
 
@@ -125,4 +126,55 @@ func (s *Server) handleDeleteEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type createFolderRequest struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
+}
+
+// handleCreateFolder creates one directory inside an existing folder.
+//
+// fs.Mkdir treats an existing directory as success because recursive copy reuses
+// the chain. For a user action that would be wrong: "New folder" on a name that
+// is already taken would report success and appear to do nothing. The existence
+// check makes the collision explicit.
+func (s *Server) handleCreateFolder(w http.ResponseWriter, r *http.Request) {
+	volumeID := r.PathValue("id")
+	var req createFolderRequest
+	if err := json.NewDecoder(io.LimitReader(r.Body, 64<<10)).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	if _, err := s.FS.EnsureWritableVolume(volumeID); err != nil {
+		writeFSError(w, err)
+		return
+	}
+	// Validates the name as a single component: separators, dot segments, and
+	// NUL bytes are rejected here.
+	rel, err := appfs.JoinRel(req.Path, req.Name)
+	if err != nil {
+		writeFSError(w, err)
+		return
+	}
+	exists, err := s.FS.Exists(volumeID, rel)
+	if err != nil {
+		writeFSError(w, err)
+		return
+	}
+	if exists {
+		writeError(w, http.StatusConflict, "a file or folder with that name already exists")
+		return
+	}
+	created, err := s.FS.Mkdir(volumeID, req.Path, req.Name)
+	if err != nil {
+		writeFSError(w, err)
+		return
+	}
+	meta, err := s.FS.Stat(volumeID, created)
+	if err != nil {
+		writeFSError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, meta)
 }

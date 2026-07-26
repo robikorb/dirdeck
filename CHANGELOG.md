@@ -3,6 +3,23 @@
 All notable changes are recorded here. The project follows semantic versioning
 after the first stable release.
 
+## Unreleased
+
+### Added
+
+- **New folder.** `F7` or the toolbar button creates a directory in the folder a
+  pane is showing; an empty folder offers it directly. A name already taken by a
+  file or folder is refused rather than silently succeeding.
+
+### Fixed
+
+- The light theme reached dialogs, the context menu, previews, and the login card
+  as dark surfaces. Only the main panels had been converted to tokens; 47 further
+  hard-coded colours were still dark literals, and the explicit
+  `data-theme='light'` block was missing every token added later, so choosing
+  light left dark text on dark dialogs. Both light blocks are now generated from
+  one source and verified identical.
+
 ## 0.2.0-rc.2 - 2026-07-26
 
 ### Added

@@ -105,6 +105,15 @@ Rename is available only when exactly one non-symlink item is selected. Press
 F2 or use the pencil button. Rename stays inside the same parent directory and
 never overwrites an existing name.
 
+## New folder
+
+Press **F7** or the folder-plus button in the pane toolbar. The folder is created
+in the folder that pane is showing, and an empty folder offers it directly. A name
+that is already taken by a file or a folder is refused with a message rather than
+quietly doing nothing.
+
+F7 is the orthodox file-manager convention for make-directory.
+
 ## Uploading files
 
 Drag any number of files onto a pane, or press **Upload** in the pane toolbar.

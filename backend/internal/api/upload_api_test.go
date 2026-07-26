@@ -355,3 +355,87 @@ func TestUploadFolderTreeRejectsReadOnlyVolume(t *testing.T) {
 		t.Fatal("read-only volume got a new directory")
 	}
 }
+
+func (f *uploadFixture) newFolder(t *testing.T, volume, dir, name string) *httptest.ResponseRecorder {
+	t.Helper()
+	body, _ := json.Marshal(map[string]string{"path": dir, "name": name})
+	req := httptest.NewRequest(http.MethodPost,
+		fmt.Sprintf("/api/volumes/%s/folder", volume), bytes.NewReader(body))
+	for _, c := range f.cookies {
+		req.AddCookie(c)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-CSRF-Token", f.csrf)
+	req.Header.Set("Origin", "http://example.com")
+	req.Host = "example.com"
+	rr := httptest.NewRecorder()
+	f.handler.ServeHTTP(rr, req)
+	return rr
+}
+
+func TestCreateFolder(t *testing.T) {
+	f := newUploadFixture(t)
+	rr := f.newFolder(t, "rw", "sub", "New Folder")
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rr.Code, rr.Body.String())
+	}
+	info, err := os.Stat(filepath.Join(f.rw, "sub", "New Folder"))
+	if err != nil || !info.IsDir() {
+		t.Fatalf("directory not created: err=%v", err)
+	}
+}
+
+// fs.Mkdir returns success for an existing directory because recursive copy
+// reuses the chain. A user action must not silently do nothing instead.
+func TestCreateFolderRejectsExistingName(t *testing.T) {
+	f := newUploadFixture(t)
+	if rr := f.newFolder(t, "rw", "", "Twice"); rr.Code != http.StatusCreated {
+		t.Fatalf("first create: %d", rr.Code)
+	}
+	if rr := f.newFolder(t, "rw", "", "Twice"); rr.Code != http.StatusConflict {
+		t.Fatalf("expected 409 on duplicate, got %d", rr.Code)
+	}
+	// An existing *file* with that name must also collide.
+	if err := os.WriteFile(filepath.Join(f.rw, "taken.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if rr := f.newFolder(t, "rw", "", "taken.txt"); rr.Code != http.StatusConflict {
+		t.Fatalf("expected 409 against an existing file, got %d", rr.Code)
+	}
+}
+
+func TestCreateFolderRejectsHostileNames(t *testing.T) {
+	f := newUploadFixture(t)
+	for _, name := range []string{"..", ".", "a/b", "/abs", ""} {
+		if rr := f.newFolder(t, "rw", "", name); rr.Code < 400 {
+			t.Fatalf("name %q accepted with %d", name, rr.Code)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(f.rw), "b")); !os.IsNotExist(err) {
+		t.Fatal("folder creation escaped the volume root")
+	}
+}
+
+func TestCreateFolderRejectsReadOnlyVolume(t *testing.T) {
+	f := newUploadFixture(t)
+	if rr := f.newFolder(t, "ro", "", "Nope"); rr.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", rr.Code)
+	}
+	if _, err := os.Stat(filepath.Join(f.ro, "Nope")); !os.IsNotExist(err) {
+		t.Fatal("read-only volume got a new directory")
+	}
+}
+
+func TestCreateFolderRequiresCSRF(t *testing.T) {
+	f := newUploadFixture(t)
+	body, _ := json.Marshal(map[string]string{"path": "", "name": "NoCSRF"})
+	req := httptest.NewRequest(http.MethodPost, "/api/volumes/rw/folder", bytes.NewReader(body))
+	for _, c := range f.cookies {
+		req.AddCookie(c)
+	}
+	rr := httptest.NewRecorder()
+	f.handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 without CSRF, got %d", rr.Code)
+	}
+}

@@ -1,7 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  ArrowDown,
   ArrowLeftRight,
+  ArrowUp,
   CheckSquare2,
   ChevronDown,
   ChevronRight,
@@ -94,6 +96,34 @@ import type {
 const EditorModal = lazy(() => import('./EditorModal'))
 
 type ViewMode = 'list' | 'grid'
+type SortKey = 'name' | 'modified' | 'size'
+type SortDir = 'asc' | 'desc'
+
+/** Natural order, so "clip-2" precedes "clip-10" the way people expect. */
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+
+/**
+ * Folders always come before files, in every mode. Sorting a directory listing
+ * by size otherwise scatters folders through it at zero bytes, which is not
+ * what anyone means by "sort by size".
+ */
+function sortEntries(entries: DirEntry[], key: SortKey, dir: SortDir): DirEntry[] {
+  const sortKey: SortKey = key === 'modified' || key === 'size' ? key : 'name'
+  const sign = dir === 'desc' ? -1 : 1
+  return [...entries].sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
+    let cmp = 0
+    if (sortKey === 'name') cmp = collator.compare(a.name, b.name)
+    else if (sortKey === 'size') cmp = a.size - b.size
+    else cmp = new Date(a.modTime).getTime() - new Date(b.modTime).getTime()
+    // Ties fall back to name so the order is stable and predictable.
+    if (cmp === 0) return collator.compare(a.name, b.name)
+    return cmp * sign
+  })
+}
+
+/** Clicking a new column starts in the direction people expect from it. */
+const defaultDirFor = (key: SortKey): SortDir => (key === 'name' ? 'asc' : 'desc')
 type Density = 'compact' | 'comfortable'
 type ThemeChoice = 'system' | 'light' | 'dark'
 
@@ -115,6 +145,8 @@ type PaneState = {
   volumeId: string
   path: string
   view: ViewMode
+  sortKey: SortKey
+  sortDir: SortDir
   entries: DirEntry[]
   truncated: boolean
   selected: string | null
@@ -129,6 +161,8 @@ const emptyPane = (): PaneState => ({
   volumeId: '',
   path: '',
   view: 'list',
+  sortKey: 'name',
+  sortDir: 'asc',
   entries: [],
   truncated: false,
   selected: null,
@@ -431,13 +465,13 @@ function Pane({
     const extend = Boolean(event?.shiftKey)
     let nextPaths: string[]
 
-    if (extend && state.entries.length > 0) {
+    if (extend && entries.length > 0) {
       const anchorPath = state.selectionAnchor ?? state.selected ?? entry.path
-      const anchorIndex = Math.max(0, state.entries.findIndex((item) => item.path === anchorPath))
-      const entryIndex = state.entries.findIndex((item) => item.path === entry.path)
+      const anchorIndex = Math.max(0, entries.findIndex((item) => item.path === anchorPath))
+      const entryIndex = entries.findIndex((item) => item.path === entry.path)
       const from = Math.min(anchorIndex, entryIndex)
       const to = Math.max(anchorIndex, entryIndex)
-      const range = state.entries.slice(from, to + 1).map((item) => item.path)
+      const range = entries.slice(from, to + 1).map((item) => item.path)
       nextPaths = toggle ? [...new Set([...state.selectedPaths, ...range])] : range
     } else if (toggle) {
       nextPaths = state.selectedPaths.includes(entry.path)
@@ -527,27 +561,33 @@ function Pane({
     }
   }
 
-  const selectedEntries = state.entries.filter((entry) => state.selectedPaths.includes(entry.path))
+  // Every consumer below must read the same ordering: range selection works on
+  // indices, so sorting only the rendered slice would select the wrong files.
+  const entries = useMemo(
+    () => sortEntries(state.entries, state.sortKey, state.sortDir),
+    [state.entries, state.sortKey, state.sortDir],
+  )
+  const selectedEntries = entries.filter((entry) => state.selectedPaths.includes(entry.path))
   const selectedBytes = selectedEntries.reduce(
     (total, entry) => total + (entry.isDir ? 0 : entry.size),
     0,
   )
-  const selectableCount = Math.min(500, state.entries.length)
+  const selectableCount = Math.min(500, entries.length)
   const listStart = Math.max(
     0,
     Math.floor(Math.max(0, viewport.scrollTop - 32) / rowHeight) - VIRTUAL_OVERSCAN_ROWS,
   )
   const listEnd = Math.min(
-    state.entries.length,
+    entries.length,
     listStart + Math.ceil(viewport.height / rowHeight) + VIRTUAL_OVERSCAN_ROWS * 2,
   )
-  const visibleListEntries = state.entries.slice(listStart, listEnd)
+  const visibleListEntries = entries.slice(listStart, listEnd)
   const gridContentWidth = Math.max(GRID_MIN_COLUMN_WIDTH, viewport.width - 16)
   const gridColumns = Math.max(
     1,
     Math.floor((gridContentWidth + GRID_GAP) / (GRID_MIN_COLUMN_WIDTH + GRID_GAP)),
   )
-  const gridRows = Math.ceil(state.entries.length / gridColumns)
+  const gridRows = Math.ceil(entries.length / gridColumns)
   const gridStartRow = Math.max(
     0,
     Math.floor(viewport.scrollTop / GRID_ROW_HEIGHT) - VIRTUAL_OVERSCAN_ROWS,
@@ -556,9 +596,9 @@ function Pane({
     gridRows,
     gridStartRow + Math.ceil(viewport.height / GRID_ROW_HEIGHT) + VIRTUAL_OVERSCAN_ROWS * 2,
   )
-  const visibleGridEntries = state.entries.slice(
+  const visibleGridEntries = entries.slice(
     gridStartRow * gridColumns,
-    Math.min(state.entries.length, gridEndRow * gridColumns),
+    Math.min(entries.length, gridEndRow * gridColumns),
   )
 
   const writable = Boolean(volume && !volume.readOnly && volume.available)
@@ -823,7 +863,7 @@ function Pane({
                 selectableCount > 0 && state.selectedPaths.length === selectableCount
               const paths = allSelected
                 ? []
-                : state.entries.slice(0, 500).map((entry) => entry.path)
+                : entries.slice(0, 500).map((entry) => entry.path)
               onChange({
                 ...state,
                 selected: paths.at(-1) ?? null,
@@ -913,7 +953,7 @@ function Pane({
             Listing truncated at 10,000 entries. Narrow the folder or use search on the host.
           </p>
         ) : null}
-        {!state.loading && !state.error && state.entries.length === 0 && !dragActive ? (
+        {!state.loading && !state.error && entries.length === 0 && !dragActive ? (
           <div className={`empty-folder${writable ? ' empty-folder-droppable' : ''}`}>
             {writable ? (
               <>
@@ -938,9 +978,40 @@ function Pane({
             <thead>
               <tr>
                 <th className="entry-select-heading" aria-label="Selection" />
-                <th className="entry-name-heading">Name</th>
-                <th className="entry-date-heading">Date modified</th>
-                <th className="entry-size-heading">Size</th>
+                {([
+                  ['name', 'Name', 'entry-name-heading'],
+                  ['modified', 'Date modified', 'entry-date-heading'],
+                  ['size', 'Size', 'entry-size-heading'],
+                ] as [SortKey, string, string][]).map(([key, label, cls]) => {
+                  const active = state.sortKey === key
+                  return (
+                    <th
+                      key={key}
+                      className={cls}
+                      aria-sort={active ? (state.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <button
+                        type="button"
+                        className={`sort-header${active ? ' active' : ''}`}
+                        onClick={() => {
+                          onActivate()
+                          onChange({
+                            ...state,
+                            sortKey: key,
+                            sortDir: active
+                              ? state.sortDir === 'asc' ? 'desc' : 'asc'
+                              : defaultDirFor(key),
+                          })
+                        }}
+                      >
+                        <span>{label}</span>
+                        {active ? (
+                          state.sortDir === 'asc' ? <ArrowUp size={13} aria-hidden /> : <ArrowDown size={13} aria-hidden />
+                        ) : null}
+                      </button>
+                    </th>
+                  )
+                })}
                 <th className="entry-action-heading" aria-label="Actions" />
               </tr>
             </thead>
@@ -1004,11 +1075,11 @@ function Pane({
                   </td>
                 </tr>
               ))}
-              {listEnd < state.entries.length ? (
+              {listEnd < entries.length ? (
                 <tr className="virtual-spacer" aria-hidden="true">
                   <td
                     colSpan={5}
-                    style={{ height: (state.entries.length - listEnd) * rowHeight }}
+                    style={{ height: (entries.length - listEnd) * rowHeight }}
                   />
                 </tr>
               ) : null}
@@ -1194,8 +1265,8 @@ function Pane({
       <div className="pane-footer">
         <span>
           {selectedEntries.length > 0
-            ? `${selectedEntries.length} of ${state.entries.length} selected`
-            : `${state.entries.length} items`}
+            ? `${selectedEntries.length} of ${entries.length} selected`
+            : `${entries.length} items`}
         </span>
         <span>{selectedEntries.length > 0 && selectedBytes > 0 ? formatSize(selectedBytes) : ''}</span>
       </div>
@@ -1507,17 +1578,27 @@ export default function App() {
         const leftVol = vols.find((v) => v.id === paneState.left.volumeId)?.id ?? vols[0]?.id ?? ''
         const rightVol =
           vols.find((v) => v.id === paneState.right.volumeId)?.id ?? vols[1]?.id ?? vols[0]?.id ?? ''
+        // Unknown or absent sort values fall back to the default rather than
+        // being trusted: older rows predate these fields.
+        const restoreSort = (snap: { sortKey?: string; sortDir?: string }) => ({
+          sortKey: (['name', 'modified', 'size'].includes(snap.sortKey ?? '')
+            ? snap.sortKey
+            : 'name') as SortKey,
+          sortDir: (snap.sortDir === 'desc' ? 'desc' : 'asc') as SortDir,
+        })
         setLeft((p) => ({
           ...p,
           volumeId: leftVol,
           path: paneState.left.path || '',
           view: paneState.left.view === 'list' ? 'list' : 'grid',
+          ...restoreSort(paneState.left),
         }))
         setRight((p) => ({
           ...p,
           volumeId: rightVol,
           path: paneState.right.path || '',
           view: paneState.right.view === 'grid' ? 'grid' : 'list',
+          ...restoreSort(paneState.right),
         }))
         if (typeof paneState.inspectorOpen === 'boolean') {
           setInspectorOpen(paneState.inspectorOpen)
@@ -1582,14 +1663,22 @@ export default function App() {
     window.clearTimeout(persistTimer.current)
     persistTimer.current = window.setTimeout(() => {
       void savePaneState({
-        left: { volumeId: left.volumeId, path: left.path, view: left.view },
-        right: { volumeId: right.volumeId, path: right.path, view: right.view },
+        left: {
+          volumeId: left.volumeId, path: left.path, view: left.view,
+          sortKey: left.sortKey, sortDir: left.sortDir,
+        },
+        right: {
+          volumeId: right.volumeId, path: right.path, view: right.view,
+          sortKey: right.sortKey, sortDir: right.sortDir,
+        },
         inspectorOpen,
         activePane,
       }).catch(() => undefined)
     }, 400)
     return () => window.clearTimeout(persistTimer.current)
-  }, [authed, left.volumeId, left.path, left.view, right.volumeId, right.path, right.view, inspectorOpen, activePane])
+  }, [authed, left.volumeId, left.path, left.view, left.sortKey, left.sortDir,
+      right.volumeId, right.path, right.view, right.sortKey, right.sortDir,
+      inspectorOpen, activePane])
 
   // Record recent when path changes on either pane.
   useEffect(() => {

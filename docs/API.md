@@ -166,7 +166,8 @@ Persisted in SQLite under the app data directory. Mutating routes need CSRF.
 
 ```json
 {
-  "left": { "volumeId": "fixture-ro", "path": "photos", "view": "grid" },
+  "left": { "volumeId": "fixture-ro", "path": "photos", "view": "grid",
+            "sortKey": "modified", "sortDir": "desc" },
   "right": { "volumeId": "fixture-rw", "path": "", "view": "list" },
   "inspectorOpen": true,
   "activePane": "left",
@@ -176,6 +177,11 @@ Persisted in SQLite under the app data directory. Mutating routes need CSRF.
 
 Paths must be relative (no `..`, no absolute paths). Volume IDs are validated
 for separators; missing volumes are ignored on restore by the UI.
+
+`sortKey` accepts `name`, `modified`, or `size`; `sortDir` accepts `asc` or
+`desc`. Both are optional — rows written before sorting existed simply omit them
+— and any other value is rejected with `400`. Sorting itself is applied in the
+browser; the API returns entries in filesystem order.
 
 ## Transfers (Phase 1 copy + Phase 2 move)
 

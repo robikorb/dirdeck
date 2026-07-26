@@ -7,6 +7,10 @@ after the first stable release.
 
 ### Added
 
+- **Sortable columns.** Click Name, Date modified, or Size to sort a pane; click
+  the active column to reverse it. Each pane sorts independently and the choice
+  is persisted with the rest of its state. Folders always sort first, and names
+  use natural order so `clip-2` precedes `clip-10`.
 - Real screenshots in the README, captured from a running container.
 
 ### Changed

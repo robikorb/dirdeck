@@ -87,6 +87,8 @@ export type PaneSnapshot = {
   volumeId: string
   path: string
   view: 'list' | 'grid' | string
+  sortKey?: 'name' | 'modified' | 'size' | string
+  sortDir?: 'asc' | 'desc' | string
 }
 
 export type PaneStatePayload = {

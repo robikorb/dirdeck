@@ -1,6 +1,7 @@
 package prefs_test
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -98,5 +99,46 @@ func TestRejectTraversalInPrefs(t *testing.T) {
 	})
 	if err != prefs.ErrInvalid {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestPaneStateAcceptsSortAndRejectsUnknownValues(t *testing.T) {
+	database, err := db.Open(filepath.Join(t.TempDir(), "data"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	store := prefs.New(database)
+
+	saved, err := store.SavePaneState(prefs.PaneState{
+		Left:  prefs.PaneSnapshot{VolumeID: "a", Path: "", View: "list", SortKey: "size", SortDir: "desc"},
+		Right: prefs.PaneSnapshot{VolumeID: "b", Path: "sub", View: "grid"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.Left.SortKey != "size" || saved.Left.SortDir != "desc" {
+		t.Fatalf("sort not persisted: %+v", saved.Left)
+	}
+	// Omitted sort stays empty rather than being invented.
+	if saved.Right.SortKey != "" || saved.Right.SortDir != "" {
+		t.Fatalf("unexpected sort defaults: %+v", saved.Right)
+	}
+
+	loaded, err := store.GetPaneState()
+	if err != nil || loaded == nil {
+		t.Fatalf("reload: err=%v state=%v", err, loaded)
+	}
+	if loaded.Left.SortKey != "size" || loaded.Left.SortDir != "desc" {
+		t.Fatalf("sort lost on reload: %+v", loaded.Left)
+	}
+
+	for _, bad := range []prefs.PaneSnapshot{
+		{VolumeID: "a", SortKey: "colour"},
+		{VolumeID: "a", SortDir: "sideways"},
+	} {
+		if _, err := store.SavePaneState(prefs.PaneState{Left: bad}); !errors.Is(err, prefs.ErrInvalid) {
+			t.Fatalf("expected ErrInvalid for %+v, got %v", bad, err)
+		}
 	}
 }

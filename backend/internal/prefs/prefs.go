@@ -43,15 +43,19 @@ type PaneSnapshot struct {
 	VolumeID string `json:"volumeId"`
 	Path     string `json:"path"`
 	View     string `json:"view"` // list | grid
+	// Sort is a UI preference stored verbatim; unknown values are ignored by the
+	// client, and older rows simply omit these fields.
+	SortKey string `json:"sortKey,omitempty"` // name | modified | size
+	SortDir string `json:"sortDir,omitempty"` // asc | desc
 }
 
 // PaneState is the full dual-pane UI persistence payload.
 type PaneState struct {
-	Left           PaneSnapshot `json:"left"`
-	Right          PaneSnapshot `json:"right"`
-	InspectorOpen  *bool        `json:"inspectorOpen,omitempty"`
-	ActivePane     string       `json:"activePane,omitempty"` // left | right
-	UpdatedAt      time.Time    `json:"updatedAt,omitempty"`
+	Left          PaneSnapshot `json:"left"`
+	Right         PaneSnapshot `json:"right"`
+	InspectorOpen *bool        `json:"inspectorOpen,omitempty"`
+	ActivePane    string       `json:"activePane,omitempty"` // left | right
+	UpdatedAt     time.Time    `json:"updatedAt,omitempty"`
 }
 
 // Store persists user preferences.
@@ -278,6 +282,16 @@ func validatePaneSnapshot(p PaneSnapshot) error {
 		return err
 	}
 	if p.View != "" && p.View != "list" && p.View != "grid" {
+		return ErrInvalid
+	}
+	switch p.SortKey {
+	case "", "name", "modified", "size":
+	default:
+		return ErrInvalid
+	}
+	switch p.SortDir {
+	case "", "asc", "desc":
+	default:
 		return ErrInvalid
 	}
 	return nil

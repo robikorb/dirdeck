@@ -11,6 +11,20 @@ button that opens the editor. The dedicated selector beside each list row or in
 the corner of each grid card adds or removes that item without opening it. The
 Inspector shows metadata and previews for the focused item.
 
+## Sorting
+
+Click **Name**, **Date modified**, or **Size** to sort the list. Clicking the
+active column reverses it. Each pane sorts independently and remembers its
+choice, so a source pane sorted by date and a destination sorted by name stay
+that way.
+
+Folders always come first, in every mode. Sorting by size otherwise scatters
+folders through the list at zero bytes, which is not what "sort by size" means.
+Names use natural order, so `clip-2` comes before `clip-10`.
+
+Sorting applies to the entries the browser has loaded. In a folder past the
+10,000-entry display cap the sort covers the loaded page, not the whole folder.
+
 ## Multiple selection
 
 | Action | Result |

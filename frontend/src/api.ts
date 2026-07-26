@@ -409,9 +409,20 @@ export function formatSize(bytes: number): string {
   return `${v.toFixed(v >= 10 ? 0 : 1)} ${units[i]}`
 }
 
+/**
+ * Short, sortable-looking timestamp. The default toLocaleString spends a third of
+ * a narrow pane on a full numeric date plus seconds, which pushes the filename —
+ * the column people actually read — into an ellipsis.
+ */
 export function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleString()
+    return new Date(iso).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   } catch {
     return iso
   }

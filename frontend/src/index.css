@@ -458,22 +458,22 @@ input:focus-visible,
 }
 
 .entry-date-heading {
-  width: 150px;
+  width: 132px;
 }
 
 .entry-size-heading {
-  width: 92px;
+  width: 84px;
 }
 
 /* Panes get much narrower once the layout stacks; give the name column back
    the space instead of squeezing it to nothing. */
 @media (max-width: 1279px) {
   .entry-date-heading {
-    width: 116px;
+    width: 108px;
   }
 
   .entry-size-heading {
-    width: 76px;
+    width: 70px;
   }
 }
 
@@ -616,7 +616,9 @@ input:focus-visible,
 .grid-item {
   position: relative;
   min-width: 0;
-  height: 132px;
+  /* Kept in sync with GRID_ROW_HEIGHT in App.tsx — see the virtualization
+     contract in docs/ARCHITECTURE.md. */
+  height: 168px;
   box-sizing: border-box;
   border: 1px solid transparent;
   border-radius: 12px;
@@ -1061,6 +1063,13 @@ input:focus-visible,
 }
 
 .grid-icon.thumb {
+  /* Fill the card's image area rather than sitting in the 48px icon tile.
+     A fixed height, not an aspect ratio: with aspect-ratio the card height would
+     track the column width, and grid virtualization needs a constant row pitch.
+     object-fit crops to a consistent tile, which is what photo grids do anyway. */
+  width: 100%;
+  height: 118px;
+  margin: 0 0 6px;
   padding: 0;
   overflow: hidden;
   background: var(--surface-sunken);

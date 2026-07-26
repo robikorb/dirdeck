@@ -40,6 +40,10 @@ must not be repeated as open roadmap work:
   virtualization;
 - documented network exposure model, reverse-proxy limitations, and upgrade
   notes;
+- browser upload of files and folder trees, a stoppable queue, and new-folder
+  creation;
+- light theme, density control, and AA-passing contrast in both themes;
+- real screenshots captured from the running application, with generic content;
 - restrictive Content Security Policy;
 - hashed session tokens, expired-session pruning, and safer login timing;
 - configurable credentials, sessions, throttling, bind address, and backups;
@@ -68,10 +72,11 @@ similar communities.
   command and rollback procedure if that is ever needed.
 - Preserve the existing API paths during the rebrand.
 
-### 2. Show the real product
+### 2. Show the real product — screenshots done, clip outstanding
 
-- Add three or four screenshots made from the real running application:
-  dual-pane list view, grid/preview, transfer progress, and editor/context menu.
+- ~~Add three or four screenshots made from the real running application~~ —
+  four are in `docs/screenshots/`, captured over CDP from a live container with
+  deliberately generic fixture content (no titles or trademarks).
 - Add a short optimized GIF or WebM showing a cross-pane copy.
 - Put the strongest screenshot directly below the opening pitch.
 - Replace design-concept artwork with runtime evidence where product behavior is

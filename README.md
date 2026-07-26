@@ -13,6 +13,11 @@ Total Commander-style two-pane workflow in the browser, packaged as one Docker
 container. Mount only the folders and disks you want it to see, then browse,
 copy, move, rename, edit, preview, and delete files across them.
 
+![Dual-pane browsing with a selection ready to copy to the other pane](docs/screenshots/dual-pane.png)
+
+Pick a source on one side, a destination on the other, and send the selection
+across. Every volume starts read-only, so a wrong mount costs nothing.
+
 The backend is written in Go, the frontend uses React and TypeScript, and the
 complete UI is embedded into one container image. Application state is stored
 in SQLite inside a persistent Docker volume.
@@ -37,6 +42,23 @@ in SQLite inside a persistent Docker volume.
 - Non-root container process with configurable PUID, PGID, and umask.
 - Persistent jobs and automatic forward-only SQLite migrations.
 - Backup and update scripts that preserve settings.
+
+## What it looks like
+
+Batch copy and move run as durable server-side jobs. Closing the browser does
+not stop them, and progress, conflicts, and cancellation are reported per job.
+
+![A completed batch copy reported in the Inspector](docs/screenshots/transfers.png)
+
+Grid view renders thumbnails for images, with previews and metadata in the
+Inspector.
+
+![Grid view showing image thumbnails](docs/screenshots/grid-thumbnails.png)
+
+Light and dark themes follow the operating system, or you can pick one. Rows
+switch between compact and comfortable density.
+
+![The same folder in the light theme](docs/screenshots/light-theme.png)
 
 ## Quick start
 

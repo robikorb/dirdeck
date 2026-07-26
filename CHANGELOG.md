@@ -5,6 +5,20 @@ after the first stable release.
 
 ## Unreleased
 
+### Added
+
+- Real screenshots in the README, captured from a running container.
+
+### Changed
+
+- Grid thumbnails fill the card instead of sitting in a 48-pixel icon tile, so
+  grid view is usable for browsing photos. The height is fixed rather than an
+  aspect ratio, because an aspect ratio would make the card height track the
+  column width and break the grid's constant row pitch.
+- Timestamps drop the seconds and use a short month name. The previous
+  `toLocaleString` output spent a third of a narrow pane on the date and pushed
+  filenames into an ellipsis; the date and size columns are narrower too.
+
 ### Fixed
 
 - Renaming a file to change only its capitalisation returned `500 internal error`

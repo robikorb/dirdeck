@@ -271,9 +271,14 @@ duplicated in `index.css` and must be changed together:
 | `App.tsx` | `index.css` | Meaning |
 |-----------|-------------|---------|
 | `ROW_HEIGHT[density]` | `--list-row-height` | List row height, written from JS |
-| `GRID_ROW_HEIGHT` | `.grid-item` height + `.grid` gap | Grid row pitch |
+| `GRID_ROW_HEIGHT` | `.grid-item` height + `.grid` gap | Grid row pitch (168 + 14) |
 | `GRID_MIN_COLUMN_WIDTH` | `.grid` `minmax()` first value | Column breakpoint |
 | `GRID_GAP` | `.grid` gap | Column and row gap |
+
+Grid thumbnails use a fixed height rather than an aspect ratio. An aspect ratio
+would make the card height track the column width, so the row pitch would change
+with the pane size and the spacer arithmetic would be wrong at every width but
+one. `object-fit: cover` crops instead, which is what photo grids do anyway.
 
 Row height is the density setting, so it cannot be a constant in two places.
 `App.tsx` owns `ROW_HEIGHT` and writes it to the `--list-row-height` custom

@@ -99,7 +99,7 @@ version rather than `latest`, because `latest` is reserved for stable releases.
 To move to a newer build, set the version and pull:
 
 ```bash
-DIRDECK_VERSION=0.2.0-rc.3 docker compose pull && docker compose up -d
+DIRDECK_VERSION=0.2.0-rc.4 docker compose pull && docker compose up -d
 ```
 
 Every directory you mount under `/mnt/volumes/` shows up automatically — the

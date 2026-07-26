@@ -4,39 +4,65 @@ The release candidate must be installable without unpublished local knowledge.
 
 ## Public RC workflow
 
-1. Run the complete backend and frontend test suite.
+1. Run the complete backend and frontend test suite with the race detector.
 2. Scan tracked files for credentials, private host paths, databases, and
    mounted user content.
-3. Publish a clearly marked semantic prerelease such as `v0.1.0-rc.2` only
-   after explicit approval.
-4. Use a clean host directory that has never contained this project.
-5. Clone only the public repository.
-6. Follow the public README without copying local files from a development
-   machine.
-7. Run `./setup.sh`.
-8. Verify login, health, ready, and persistence after restart.
-9. Confirm `compose.override.yml`, `config/volumes.yaml`, `.env`, and secrets
-   remain untracked and unchanged after a pull/rebuild.
+3. Publish a clearly marked semantic prerelease such as `v0.2.0-rc.1` only after
+   explicit approval. A prerelease tag must never move `latest`.
+4. Confirm the published image manifest lists both `linux/amd64` and
+   `linux/arm64`, and that it is pullable anonymously.
+
+### Operator path — the one that matters
+
+5. Use a clean host directory that has never contained this project.
+6. Install exactly the way the README says: download `compose.yml` from the
+   published ref and run `docker compose up -d`. Do not clone and do not build
+   from source; the point is to exercise the published image.
+7. Confirm the first start prints an administrator password exactly once, that
+   only its hash is stored, and that restarting neither reprints it nor resets
+   it.
+8. Confirm a directory bind-mounted under `/mnt/volumes/` is discovered without
+   any registry file, and that it stays read-only until named in
+   `DIRDECK_WRITABLE`.
+9. Verify login, health, ready, and persistence across a container restart.
 10. Confirm Compose binds to `127.0.0.1` by default and that LAN access appears
     only after explicitly setting `DIRDECK_BIND_ADDR=0.0.0.0`.
 
-Any undocumented command, copied local config, or developer-only assumption is
-a release defect and must be fixed before retesting.
+### Source path
+
+11. Separately clone the repository and run `./setup.sh`, which builds from
+    source through `compose.build.yml`.
+12. Confirm `compose.override.yml`, `config/volumes.yaml`, `.env`, and secrets
+    remain untracked and unchanged after a pull and rebuild.
+
+### Upgrade path
+
+13. From the previous release, run `./scripts/update.sh` and confirm settings,
+    credentials, transfer history, and mounted files survive.
+14. Confirm a pre-rename `.env` using `LGFM_*` still resolves, including
+    `LGFM_BIND_ADDR`, which Compose must translate rather than silently drop.
+15. Confirm `./scripts/backup.sh` archives the volume named in `.env` and
+    refuses to run when that volume does not exist.
 
 ## Storage validation order
 
 1. Keep the disposable RO and RW fixtures enabled.
 2. Test single and multiple selection.
-3. Test batch copy, move, conflict apply-to-all, cancel, rename, editor save,
+3. Test upload: drag several files onto a pane, confirm serial per-file
+   progress, cancel one mid-file, and confirm no partial file and no
+   `.dirdeck-upload-*` staging file survive. Repeat a name to exercise skip,
+   keep both, replace, and keep-both-for-all. Confirm the upload control is
+   disabled on a read-only volume and that the API rejects it with `403`.
+4. Test batch copy, move, conflict apply-to-all, cancel, rename, editor save,
    and batch delete using fixture files only.
-4. Copy and cross-filesystem-move a fixture tree containing dotfiles and more
+5. Copy and cross-filesystem-move a fixture tree containing dotfiles and more
    entries than a deliberately lowered display-list limit; verify every source
    reaches the destination before the move source disappears.
-5. Add real host storage as Docker read-only mounts and registry read-only
+6. Add real host storage as Docker read-only mounts and registry read-only
    volumes.
-6. Verify browsing, preview, read-only editor mode, hidden-file policy, and
+7. Verify browsing, preview, read-only editor mode, hidden-file policy, and
    unavailable-mount behavior.
-7. Create a dedicated disposable write-test directory.
+8. Create a dedicated disposable write-test directory.
 8. Enable write access only for that directory.
 9. Test copy, move, rename, editor save, and deletion with generated test files.
 10. Enable write access for a real volume only after explicit approval.

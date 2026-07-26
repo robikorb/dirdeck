@@ -23,6 +23,8 @@ in SQLite inside a persistent Docker volume.
 - Dual-pane list and grid browsing.
 - Dedicated item selectors plus Cmd/Ctrl+click, Shift+click, and Cmd/Ctrl+A
   multiple selection.
+- Drag-and-drop browser upload with per-file progress, cancellation, and
+  conflict handling.
 - Batch copy and move jobs with combined byte and file progress.
 - Complete transfer traversal that is independent of hidden-file display
   preferences and UI listing limits.

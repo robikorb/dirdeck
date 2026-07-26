@@ -21,8 +21,9 @@ every 30 seconds.
 ### Operator reconnect steps
 
 1. Restore the host mount (remount SMB/NFS/USB, fix network).
-2. Confirm the path is visible **inside** the container:
-   `docker compose exec file-manager ls /mnt/volumes/<id>`.
+2. Confirm the path is visible **inside** the container. The service is
+   `dirdeck` in the standalone stack and `file-manager` in a source build:
+   `docker compose exec dirdeck ls /mnt/volumes/<id>`.
 3. Click **Refresh** in the Volumes side panel (or `Ctrl/Cmd+R`), or wait for
    the periodic probe.
 4. If the root was missing at process start, restart the container after the
@@ -56,6 +57,40 @@ increases latency but does not bypass authentication or path boundaries.
 Thumbnail generation also enforces decode **time**, **byte**, **pixel**, and
 **concurrency** limits (see [SECURITY.md](SECURITY.md)). Oversized or slow
 decodes fail closed (`413` / `504` / `429`) instead of starving the process.
+
+## Uploads over slow mounts
+
+Uploads stream from the browser straight to the destination filesystem, so a
+slow NAS share throttles the browser rather than buffering in the container.
+Files upload one at a time on purpose: a parallel queue would saturate the link
+and make per-file progress meaningless.
+
+An interrupted upload leaves nothing under the real name. If a container is
+killed mid-upload the staging file survives with a `.dirdeck-upload-` prefix and
+is removed the next time that folder is used as an upload destination. To find
+any by hand:
+
+```bash
+find /path/to/mount -name '.dirdeck-upload-*'
+```
+
+Uploads are rejected on read-only volumes before the body is read, so a wrong
+drop target costs one error rather than a partial transfer.
+
+## Compose warns about the state volume after the rename
+
+Installations that predate the DirDeck rename see this on every `up`:
+
+```text
+volume "liquid-glass-file-manager_prod_app-state" already exists but was
+created for project "liquid-glass-file-manager" (expected "dirdeck")
+```
+
+This is informational. The volume name is pinned in `.env`, Compose finds and
+uses it, and no data moves. Renaming the volume would be a real data migration
+for a cosmetic gain, so the name is deliberately left alone. Declaring it
+`external: true` silences the warning but then Compose will never create it,
+which breaks a fresh install from the same file.
 
 ## Transfer reconnects
 
@@ -95,10 +130,12 @@ shutdown requested
 `http shutdown: context deadline exceeded` means a request did not finish
 within step 2. Transfer cleanup still runs afterwards on its own budget.
 
-## Fixtures in the default stack
+## Fixtures in the source stack
 
-`compose.yml` initially bind-mounts only disposable `fixtures/ro` and
-`fixtures/rw`. Do not point automated tests at real user storage. Add real
+`compose.build.yml` bind-mounts only disposable `fixtures/ro` and `fixtures/rw`.
+The standalone `compose.yml` ships no fixtures at all — it mounts whatever the
+operator points at `/mnt/volumes/`. Do not point automated tests at real user
+storage. Add real
 storage only with the read-only-first process in
 [STORAGE-MOUNTS.md](STORAGE-MOUNTS.md), then use disposable files before
 enabling writes.

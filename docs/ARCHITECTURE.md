@@ -196,6 +196,23 @@ must not traverse them.
 - Atomic UTF-8 saves with a 2 MiB ceiling and stale-file conflict detection
 - Operator notes in `OPERATIONS.md`; shortcut reference in `KEYBOARD.md`
 
+### Upload — implemented
+
+One HTTP request per file, streamed straight to disk. A multipart batch would
+buffer server-side, hide per-file progress, and make cancellation all-or-nothing.
+
+- destination-side `.dirdeck-upload-*` staging file promoted by a single rename;
+- `Content-Length` mismatch is a failure, never a short file under the real name;
+- `RENAME_NOREPLACE` unless the caller explicitly asked to replace;
+- free-space check before the first byte is written;
+- orphaned staging files swept when the folder is next used as a destination.
+
+The server has no overall read deadline, because a fixed one would kill long
+uploads mid-transfer. `ReadHeaderTimeout` still bounds slow-header attacks.
+
+Folder upload and resumable chunked upload are deliberately deferred until plain
+upload has proven itself.
+
 ### Permanent delete — implemented
 
 - One to 500 selected paths with explicit confirmation

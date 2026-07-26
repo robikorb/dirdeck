@@ -35,7 +35,10 @@ Generated local files:
 The example stack initially mounts only `fixtures/ro` and `fixtures/rw`.
 Fixtures are disposable and safe for first-run testing.
 
-## Manual installation
+## Manual installation from source
+
+Only needed when building from a checkout. Operators should use the published
+image — see the quick start in the [README](../README.md).
 
 ```bash
 cp .env.example .env
@@ -45,13 +48,13 @@ mkdir -p secrets
 printf 'admin\n' > secrets/admin_username
 printf 'use-a-long-unique-password\n' > secrets/admin_password
 chmod 600 secrets/admin_username secrets/admin_password
-docker compose up -d --build
+docker compose -f compose.build.yml -f compose.override.yml up -d --build
 ```
 
 Verify:
 
 ```bash
-docker compose ps
+docker compose -f compose.build.yml -f compose.override.yml ps
 curl -fsS http://127.0.0.1:3002/api/health
 curl -fsS http://127.0.0.1:3002/api/ready
 ```
@@ -91,6 +94,10 @@ id and the sidebar label. Discovered volumes are **read-only** until listed in
 `DIRDECK_WRITABLE`, so a wrong bind mount cannot cost you data. Mounting a
 volumes file at `DIRDECK_VOLUMES_FILE` disables discovery and gives you full
 control per volume — see [STORAGE-MOUNTS.md](STORAGE-MOUNTS.md).
+
+Read-only volumes reject uploads, renames, edits, deletes, and transfer
+destinations. `DIRDECK_WRITABLE` is therefore the single switch that turns a
+volume from browsable into manageable.
 
 **Administrator.** If no secret files are mounted, DirDeck generates a 24
 character password on the very first start and prints it once:

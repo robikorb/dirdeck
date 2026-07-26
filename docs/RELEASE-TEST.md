@@ -9,6 +9,9 @@ The release candidate must be installable without unpublished local knowledge.
    mounted user content.
 3. Publish a clearly marked semantic prerelease such as `v0.2.0-rc.1` only after
    explicit approval. A prerelease tag must never move `latest`.
+   Bump the pinned default in `compose.yml` to the tag being published; CI
+   checks that the pinned tag has a matching Git tag, but only a real install
+   proves the published image exists.
 4. Confirm the published image manifest lists both `linux/amd64` and
    `linux/arm64`, and that it is pullable anonymously.
 
@@ -16,8 +19,11 @@ The release candidate must be installable without unpublished local knowledge.
 
 5. Use a clean host directory that has never contained this project.
 6. Install exactly the way the README says: download `compose.yml` from the
-   published ref and run `docker compose up -d`. Do not clone and do not build
-   from source; the point is to exercise the published image.
+   published ref and run `docker compose up -d`. Do not clone, do not build from
+   source, and **do not edit the file** — editing the image tag to work around a
+   missing one is how a broken default reaches users. Remove any locally built
+   image with the same name first, or a stale local copy will satisfy the pull
+   and hide the problem.
 7. Confirm the first start prints an administrator password exactly once, that
    only its hash is stored, and that restarting neither reprints it nor resets
    it.

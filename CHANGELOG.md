@@ -25,6 +25,11 @@ after the first stable release.
 
 ### Fixed
 
+- The Compose quick start could not work. `compose.yml` defaulted to
+  `ghcr.io/robikorb/dirdeck:latest`, but `latest` is deliberately only published
+  for stable releases, so the tag did not exist and a fresh install failed on the
+  first command. The file now pins an exact version, the README explains how to
+  move between versions, and CI refuses a pin without a matching Git tag.
 - Renaming a file to change only its capitalisation returned `500 internal error`
   on macOS and Windows. Those filesystems are case-insensitive through Docker
   Desktop, so `notes.txt` and `Notes.txt` are one entry and the no-replace rename

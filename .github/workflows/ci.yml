@@ -54,6 +54,27 @@ jobs:
           cp compose.override.example.yml compose.override.yml
           printf 'ci-admin\n' > secrets/admin_username
           printf 'ci-only-long-password\n' > secrets/admin_password
+      - name: Pinned image tag must be released
+        run: |
+          # compose.yml pins an exact image while the project is in rc. A pin
+          # pointing at an unpublished tag breaks the README quick start for
+          # everyone, and nothing else in CI would notice.
+          pinned=$(sed -n 's/.*ghcr.io\/[^:]*:\${DIRDECK_VERSION:-\([^}]*\)}.*/\1/p' compose.yml)
+          if [ -z "$pinned" ]; then
+            echo "Could not read the pinned image tag from compose.yml" >&2
+            exit 1
+          fi
+          echo "compose.yml pins: $pinned"
+          if [ "$pinned" = "latest" ]; then
+            echo "latest is only published for stable releases; pin an exact version" >&2
+            exit 1
+          fi
+          git fetch --tags --quiet
+          if ! git rev-parse "v$pinned" >/dev/null 2>&1; then
+            echo "No git tag v$pinned — compose.yml points at an unpublished image" >&2
+            exit 1
+          fi
+
       - name: Validate Compose
         run: docker compose -f compose.build.yml -f compose.override.yml config
       - name: Build container

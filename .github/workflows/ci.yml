@@ -39,6 +39,14 @@ jobs:
       - name: Lint
         working-directory: frontend
         run: npm run lint
+      # A self-referential custom property resolves to nothing, and it fails
+      # silently in whichever theme is not being looked at. See the script.
+      - name: Theme tokens
+        run: node scripts/check-theme-tokens.mjs
+      # A breakpoint override placed above its own base rule loses to source
+      # order and stops applying, with no CSS error and no browser warning.
+      - name: CSS source order
+        run: node scripts/check-css-order.mjs
       - name: Build
         working-directory: frontend
         run: npm run build

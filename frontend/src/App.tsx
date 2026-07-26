@@ -1,10 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowLeftRight,
   ArrowUp,
   CheckSquare2,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -129,6 +131,25 @@ type ThemeChoice = 'system' | 'light' | 'dark'
 
 /** Single source of truth for row height. CSS reads it from --list-row-height,
  *  virtualization reads the same number, so density cannot desynchronise them. */
+// Keyboard navigation is handled in App; scrolling the row into view needs the
+// pane's own scroll container and row pitch. A window event carries the request
+// across without threading a prop through every render.
+const REVEAL_EVENT = 'dirdeck:reveal'
+
+type NoticeTone = 'error' | 'success' | 'info'
+type Notice = { id: number; tone: NoticeTone; text: string }
+
+// Long enough to read a completion line without hunting for it, short enough
+// that it does not sit on top of the panes while work continues.
+const NOTICE_TIMEOUT_MS = 6000
+
+// Mirrors transfer.Status* in backend/internal/transfer/manager.go.
+const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled'])
+
+function requestReveal(paneId: ActivePane, path: string) {
+  window.dispatchEvent(new CustomEvent(REVEAL_EVENT, { detail: { paneId, path } }))
+}
+
 const ROW_HEIGHT: Record<Density, number> = { compact: 38, comfortable: 46 }
 const DENSITY_KEY = 'dirdeck.density'
 const THEME_KEY = 'dirdeck.theme'
@@ -588,6 +609,31 @@ function Pane({
     Math.floor((gridContentWidth + GRID_GAP) / (GRID_MIN_COLUMN_WIDTH + GRID_GAP)),
   )
   const gridRows = Math.ceil(entries.length / gridColumns)
+
+  // Arrow-key navigation lives in App, but only the pane knows the row pitch
+  // and the scroll container. Under virtualization the selected row may not be
+  // mounted at all, so we scroll by index arithmetic rather than by element.
+  useEffect(() => {
+    const onReveal = (event: Event) => {
+      const detail = (event as CustomEvent<{ paneId: ActivePane; path: string }>).detail
+      if (!detail || detail.paneId !== paneId) return
+      const element = paneBodyRef.current
+      if (!element) return
+      const index = entries.findIndex((entry) => entry.path === detail.path)
+      if (index < 0) return
+      const pitch = state.view === 'grid' ? GRID_ROW_HEIGHT : rowHeight
+      const row = state.view === 'grid' ? Math.floor(index / gridColumns) : index
+      const top = row * pitch
+      const bottom = top + pitch
+      if (top < element.scrollTop) {
+        element.scrollTop = top
+      } else if (bottom > element.scrollTop + element.clientHeight) {
+        element.scrollTop = bottom - element.clientHeight
+      }
+    }
+    window.addEventListener(REVEAL_EVENT, onReveal)
+    return () => window.removeEventListener(REVEAL_EVENT, onReveal)
+  }, [entries, paneId, rowHeight, state.view, gridColumns])
   const gridStartRow = Math.max(
     0,
     Math.floor(viewport.scrollTop / GRID_ROW_HEIGHT) - VIRTUAL_OVERSCAN_ROWS,
@@ -1356,6 +1402,30 @@ function Pane({
   )
 }
 
+function StatusNotice({
+  notice,
+  onDismiss,
+}: {
+  notice: Notice
+  onDismiss: (id: number) => void
+}) {
+  const Icon = notice.tone === 'error' ? AlertTriangle : notice.tone === 'success' ? CheckCircle2 : Clock
+  return (
+    <div className={`status-notice status-notice-${notice.tone}`}>
+      <Icon size={15} aria-hidden />
+      <span className="status-notice-text">{notice.text}</span>
+      <button
+        type="button"
+        className="status-notice-close"
+        onClick={() => onDismiss(notice.id)}
+        aria-label="Dismiss notification"
+      >
+        <X size={13} />
+      </button>
+    </div>
+  )
+}
+
 function TransferPanel({
   jobs,
   onCancel,
@@ -1469,7 +1539,36 @@ export default function App() {
   const [favorites, setFavorites] = useState<Favorite[]>([])
   const [recents, setRecents] = useState<RecentLocation[]>([])
   const [jobs, setJobs] = useState<TransferJob[]>([])
-  const [copyError, setCopyError] = useState<string | null>(null)
+  const [copyError, setCopyErrorState] = useState<string | null>(null)
+  const [notices, setNotices] = useState<Notice[]>([])
+  const noticeSeq = useRef(0)
+
+  const dismissNotice = useCallback((id: number) => {
+    setNotices((prev) => prev.filter((n) => n.id !== id))
+  }, [])
+
+  const pushNotice = useCallback((tone: NoticeTone, text: string) => {
+    const id = ++noticeSeq.current
+    setNotices((prev) => {
+      // Repeating the same message should refresh it, not stack it: a second
+      // failed F5 must not build a wall of identical rows.
+      const deduped = prev.filter((n) => n.text !== text)
+      return [...deduped, { id, tone, text }].slice(-4)
+    })
+    if (tone !== 'error') {
+      // Failures stay until dismissed; successes are confirmation, not a task.
+      window.setTimeout(() => dismissNotice(id), NOTICE_TIMEOUT_MS)
+    }
+  }, [dismissNotice])
+
+  // Errors were previously rendered only inside the Inspector, which is closed
+  // by default below 1440px — a failed action produced no visible change at
+  // all. Every error now also reaches the status region above the panes.
+  const setCopyError = useCallback((message: string | null) => {
+    setCopyErrorState(message)
+    if (message) pushNotice('error', message)
+  }, [pushNotice])
+
   const [busyTransfer, setBusyTransfer] = useState(false)
   const [previewBroken, setPreviewBroken] = useState(false)
   const [textPreview, setTextPreview] = useState<TextPreview | null>(null)
@@ -1501,7 +1600,28 @@ export default function App() {
   const persistReady = useRef(false)
   const persistTimer = useRef<number | undefined>(undefined)
 
+  // A job reaching a terminal state is the end of a task the user started,
+  // possibly minutes ago and possibly on another screen. Announce it where they
+  // are, not only in the Inspector's history list. Tracked in a ref because the
+  // setJobs updater may run twice under StrictMode.
+  const announcedJobs = useRef(new Set<string>())
+
+  const announceJob = useCallback((job: TransferJob) => {
+    if (!TERMINAL_STATUSES.has(job.status) || announcedJobs.current.has(job.id)) return
+    announcedJobs.current.add(job.id)
+    const what = job.filesTotal === 1 ? '1 item' : `${job.filesTotal} items`
+    const verb = job.kind === 'move' ? 'Moved' : 'Copied'
+    if (job.status === 'completed') {
+      pushNotice('success', `${verb} ${what} to ${job.destDir || '/'}`)
+    } else if (job.status === 'cancelled') {
+      pushNotice('info', `${job.kind === 'move' ? 'Move' : 'Copy'} cancelled — ${job.filesDone} of ${job.filesTotal} items had been transferred`)
+    } else {
+      pushNotice('error', job.errorMessage || `${job.kind === 'move' ? 'Move' : 'Copy'} failed after ${job.filesDone} of ${job.filesTotal} items`)
+    }
+  }, [pushNotice])
+
   const upsertJob = useCallback((job: TransferJob) => {
+    announceJob(job)
     setJobs((prev) => {
       const idx = prev.findIndex((j) => j.id === job.id)
       if (idx === -1) return [job, ...prev].slice(0, 50)
@@ -1509,7 +1629,7 @@ export default function App() {
       next[idx] = job
       return next
     })
-  }, [])
+  }, [announceJob])
 
   const refreshPanes = useCallback(() => {
     setLeft((p) => ({ ...p, reloadToken: p.reloadToken + 1 }))
@@ -1803,7 +1923,7 @@ export default function App() {
         setCopyError(error instanceof Error ? error.message : 'Could not open editor')
       }
     },
-    [volumes],
+    [volumes, setCopyError],
   )
 
   const saveEditor = useCallback(async () => {
@@ -2038,7 +2158,7 @@ export default function App() {
     } catch (err) {
       setCopyError(err instanceof Error ? err.message : 'Could not add favorite')
     }
-  }, [activeState.volumeId, activeState.path, refreshPrefs])
+  }, [activeState.volumeId, activeState.path, refreshPrefs, setCopyError])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -2051,6 +2171,11 @@ export default function App() {
       if (editorDocument || renameTarget || deleteTarget || newFolderPane) return
       const pane = activePane === 'left' ? left : right
       const setPane = activePane === 'left' ? setLeft : setRight
+      // Keyboard navigation must walk the order the user is looking at, not the
+      // order the directory happened to load in. The pane renders this same
+      // sort; indexing pane.entries here would move the highlight to a row
+      // somewhere else on screen — and the next keystroke may be Delete.
+      const visible = sortEntries(pane.entries, pane.sortKey, pane.sortDir)
 
       if (e.key === 'F5') {
         e.preventDefault()
@@ -2094,14 +2219,14 @@ export default function App() {
       }
       if ((e.key === 'a' || e.key === 'A') && (e.ctrlKey || e.metaKey)) {
         e.preventDefault()
-        const paths = pane.entries.slice(0, 500).map((entry) => entry.path)
+        const paths = visible.slice(0, 500).map((entry) => entry.path)
         setPane({
           ...pane,
           selected: paths.at(-1) ?? null,
           selectedPaths: paths,
           selectionAnchor: paths[0] ?? null,
         })
-        if (pane.entries.length > 500) {
+        if (visible.length > 500) {
           setCopyError('The first 500 items were selected; batch operations are limited to 500 items.')
         }
         return
@@ -2143,21 +2268,22 @@ export default function App() {
       }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault()
-        if (pane.entries.length === 0) return
+        if (visible.length === 0) return
         const idx = pane.selected
-          ? pane.entries.findIndex((en) => en.path === pane.selected)
+          ? visible.findIndex((en) => en.path === pane.selected)
           : -1
         const nextIdx =
           e.key === 'ArrowDown'
-            ? Math.min(pane.entries.length - 1, idx + 1)
+            ? Math.min(visible.length - 1, idx + 1)
             : Math.max(0, idx <= 0 ? 0 : idx - 1)
-        const entry = pane.entries[nextIdx]
+        const entry = visible[nextIdx]
         setPane({
           ...pane,
           selected: entry.path,
           selectedPaths: [entry.path],
           selectionAnchor: entry.path,
         })
+        requestReveal(activePane, entry.path)
         void onSelectMeta(pane.volumeId, entry.path, entry.isDir ? null : entry)
         return
       }
@@ -2243,6 +2369,22 @@ export default function App() {
   return (
     <>
     <div className={`app-shell${inspectorOpen ? '' : ' inspector-collapsed'}`}>
+      {/* Both regions are always mounted: a live region inserted at the same
+          moment as its content is not reliably announced. Errors are assertive
+          and stay until dismissed; everything else is polite and self-clears. */}
+      <div className="status-region" aria-label="Notifications">
+        <div role="alert" className="status-stack">
+          {notices.filter((n) => n.tone === 'error').map((notice) => (
+            <StatusNotice key={notice.id} notice={notice} onDismiss={dismissNotice} />
+          ))}
+        </div>
+        <div role="status" aria-live="polite" className="status-stack">
+          {notices.filter((n) => n.tone !== 'error').map((notice) => (
+            <StatusNotice key={notice.id} notice={notice} onDismiss={dismissNotice} />
+          ))}
+        </div>
+      </div>
+
       <aside className="glass side-panel" aria-label="Locations">
         <div className="side-brand">
           <img src="/app-icon.svg" alt="" aria-hidden />

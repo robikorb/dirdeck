@@ -30,12 +30,12 @@
   --surface-raised: rgba(18, 23, 36, 0.98);
   --surface-sunken: rgba(0, 0, 0, 0.3);
   --surface-inset: rgba(255, 255, 255, 0.06);
-  --shadow-strong: var(--shadow-strong);
+  --shadow-strong: rgba(0, 0, 0, 0.65);
   --track: rgba(255, 255, 255, 0.08);
   --warn: #fbbf24;
   --warn-bg: rgba(251, 191, 36, 0.1);
   --success: #86e39b;
-  --danger-text: var(--danger-text);
+  --danger-text: #fca5a5;
   --danger-bg: rgba(185, 28, 28, 0.24);
   --danger-border: rgba(248, 113, 113, 0.22);
   --link: #93c5fd;
@@ -210,12 +210,12 @@
   --surface-raised: rgba(18, 23, 36, 0.98);
   --surface-sunken: rgba(0, 0, 0, 0.3);
   --surface-inset: rgba(255, 255, 255, 0.06);
-  --shadow-strong: var(--shadow-strong);
+  --shadow-strong: rgba(0, 0, 0, 0.65);
   --track: rgba(255, 255, 255, 0.08);
   --warn: #fbbf24;
   --warn-bg: rgba(251, 191, 36, 0.1);
   --success: #86e39b;
-  --danger-text: var(--danger-text);
+  --danger-text: #fca5a5;
   --danger-bg: rgba(185, 28, 28, 0.24);
   --danger-border: rgba(248, 113, 113, 0.22);
   --link: #93c5fd;
@@ -268,11 +268,6 @@ input:focus-visible,
    dead space. Shrink the track to the collapsed rail instead.
    Scoped to the widths that actually place an `inspector` grid area — this
    selector outranks the narrower `.app-shell` media rules on specificity. */
-@media (min-width: 1440px) {
-  .app-shell.inspector-collapsed {
-    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) 36px minmax(0, 1fr) 40px;
-  }
-}
 
 .inspector-rail {
   grid-area: inspector;
@@ -301,51 +296,6 @@ input:focus-visible,
   color: var(--accent-text);
 }
 
-@media (max-width: 1439px) {
-  .app-shell {
-    grid-template-columns: minmax(170px, 200px) minmax(0, 1fr) 36px minmax(0, 1fr);
-    grid-template-areas: "side left transfer right";
-  }
-  .inspector {
-    position: fixed;
-    z-index: 30;
-    top: 14px;
-    right: 14px;
-    bottom: 14px;
-    width: min(360px, calc(100vw - 28px));
-    box-shadow: 0 24px 80px var(--shadow-strong);
-  }
-  /* No `inspector` grid area exists below this width; the rail would create an
-     implicit track. The centre transfer strip keeps the toggle here. */
-  .inspector-rail {
-    display: none;
-  }
-}
-
-@media (max-width: 1279px) {
-  .app-shell {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(280px, 1fr) auto minmax(280px, 1fr);
-    grid-template-areas:
-      "side"
-      "left"
-      "transfer"
-      "right";
-    height: auto;
-    min-height: 100%;
-  }
-  .side-panel {
-    max-height: 200px;
-  }
-  .transfer-strip {
-    flex-direction: row;
-    height: auto;
-  }
-  .inspector {
-    left: 14px;
-    width: auto;
-  }
-}
 
 .glass {
   background: var(--bg-panel);
@@ -2100,4 +2050,188 @@ input:focus-visible,
 
 .entry-size-heading .sort-header {
   justify-content: flex-start;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive overrides.
+
+   These live at the end of the file on purpose. They carry the same
+   specificity as the base rules they override, so source order decides the
+   winner. When they sat above the base rules, `.transfer-strip` kept its
+   column direction at every width and the stacked layout wedged a 278px empty
+   bar between the panes. Add new breakpoint rules here, never earlier.
+   --------------------------------------------------------------------------- */
+
+@media (min-width: 1440px) {
+  .app-shell.inspector-collapsed {
+    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) 36px minmax(0, 1fr) 40px;
+  }
+}
+
+@media (max-width: 1439px) {
+  .app-shell {
+    grid-template-columns: minmax(170px, 200px) minmax(0, 1fr) 36px minmax(0, 1fr);
+    grid-template-areas: "side left transfer right";
+  }
+  .inspector {
+    position: fixed;
+    z-index: 30;
+    top: 14px;
+    right: 14px;
+    bottom: 14px;
+    width: min(360px, calc(100vw - 28px));
+    box-shadow: 0 24px 80px var(--shadow-strong);
+  }
+  /* No `inspector` grid area exists below this width; the rail would create an
+     implicit track. The centre transfer strip keeps the toggle here. */
+  .inspector-rail {
+    display: none;
+  }
+}
+
+@media (max-width: 1279px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(280px, 1fr) auto minmax(280px, 1fr);
+    grid-template-areas:
+      "side"
+      "left"
+      "transfer"
+      "right";
+    height: auto;
+    min-height: 100%;
+  }
+  .side-panel {
+    max-height: 200px;
+  }
+  .transfer-strip {
+    flex-direction: row;
+    height: auto;
+  }
+  .inspector {
+    left: 14px;
+    width: auto;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Status region.
+
+   Errors and completions used to render only inside the Inspector, which is
+   closed by default below 1440px — so a failed action produced no visible
+   change at all. This sits above every pane at every width, outside the grid,
+   so it cannot be collapsed away with a panel.
+   --------------------------------------------------------------------------- */
+
+.status-region {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  width: min(560px, calc(100vw - 28px));
+}
+
+.status-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-notice {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 10px 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-dialog);
+  box-shadow: 0 12px 32px var(--shadow-strong);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  animation: status-notice-in var(--dur-base, 160ms) ease-out;
+}
+
+@keyframes status-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-notice {
+    animation: none;
+  }
+}
+
+.status-notice svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.status-notice-error {
+  border-color: var(--danger-border);
+  background: var(--danger-bg), var(--surface-dialog);
+}
+
+.status-notice-error svg {
+  color: var(--danger-text);
+}
+
+.status-notice-success svg {
+  color: var(--success);
+}
+
+.status-notice-info svg {
+  color: var(--text-muted);
+}
+
+.status-notice-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.status-notice-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.status-notice-close:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* Disabled icon buttons previously computed opacity: 1 and kept their hover
+   background, so an unavailable action looked identical to an available one. */
+.icon-btn:disabled,
+.transfer-strip button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.icon-btn:disabled:hover,
+.transfer-strip button:disabled:hover {
+  background: transparent;
+  color: inherit;
 }

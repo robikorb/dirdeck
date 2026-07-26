@@ -51,7 +51,51 @@ must not be repeated as open roadmap work:
 - race-detector CI and a live container readiness test;
 - explicit refresh, focus refresh, periodic refresh, and active-volume refresh;
 - single-click folder navigation, explicit editor action, text-selection-safe
-  range selection, improved grid sizing, and a complete context menu.
+  range selection, improved grid sizing, and a complete context menu;
+- a status region above the panes carrying errors, completions and
+  cancellations independently of the Inspector, with `aria-live` announcement;
+- keyboard navigation that follows the pane's current sort order and scrolls the
+  selected row into view;
+- CI checks for self-referential CSS custom properties and for breakpoint
+  overrides cancelled by source order.
+
+## Open UX findings
+
+From the dual-agent UX review recorded in `.impeccable/critique/`
+(2026-07-27, 21/40). The items above are already closed; these are not.
+
+### Accessibility, before 1.0
+
+- Give the row grid a roving tabindex. Every row, checkbox and pencil is
+  currently a tab stop, so a 17-item folder has 81 of them.
+- Add `role="grid"` to the list table, or stop putting `aria-selected` on plain
+  `<tr>` elements where it is not exposed.
+- Stop nesting real buttons inside `div role="button"` grid tiles.
+- Expose which pane is active programmatically; a 1px focus ring is the only
+  current signal, so a screen-reader user cannot tell which side F5 copies from.
+- Add an Escape handler to the rename dialog, and focus trap and restore to all
+  three dialogs.
+- Add an `h1` and document landmarks.
+- Make the editor reachable from the keyboard.
+
+### Clarity
+
+- Replace the seven unlabeled 28px centre-strip icons with two labeled buttons
+  whose direction follows the active pane, and move rename and delete beside the
+  selection count in the pane footer. On a read-only destination, delete is
+  currently the only enabled control between the panes.
+- Say why an action is unavailable instead of silently disabling it.
+- Name the destination folder in destructive and transfer dialogs, not just the
+  volume. Both panes can currently display the same title.
+- Break up the transfer meta line; drop the `[copy]` log prefix and "free at
+  start" from user-facing copy.
+
+### Responsive
+
+- Below 1280px the sidebar is capped at 200px and clips the second volume; it
+  should become a horizontal volume switcher.
+- The Inspector becomes a full-bleed fixed overlay at those widths; cap it and
+  add a scrim.
 
 ## Public launch gate
 

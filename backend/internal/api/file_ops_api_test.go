@@ -81,6 +81,15 @@ volumes:
 		return rr
 	}
 
+	// An editable extension holding non-UTF-8 bytes must answer 415, not 500.
+	// These errors were mapped only in writeTransferError, so the editor showed
+	// "internal error" for every binary file with a text-looking name.
+	_ = os.WriteFile(filepath.Join(rw, "binary.md"), []byte{0xff, 0xfe, 0x00, 0x41}, 0o640)
+	binary := authed(http.MethodGet, "/api/volumes/rw/content?path=binary.md", nil, false)
+	if binary.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("binary content: got %d, want 415; body %s", binary.Code, binary.Body.String())
+	}
+
 	get := authed(http.MethodGet, "/api/volumes/rw/content?path=config.json", nil, false)
 	if get.Code != http.StatusOK {
 		t.Fatalf("get content: %d %s", get.Code, get.Body.String())

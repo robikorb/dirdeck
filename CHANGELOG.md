@@ -3,6 +3,61 @@
 All notable changes are recorded here. The project follows semantic versioning
 after the first stable release.
 
+## 0.2.0-rc.5 - 2026-07-27
+
+A UX review pass. Three of the fixes below are regressions introduced in rc.3
+and rc.4; each now has a test or a CI check so the same class of mistake cannot
+land silently again.
+
+### Added
+
+- **Status region.** Errors, transfer completions and cancellations now appear
+  in a region anchored above the panes, independent of the Inspector. Failures
+  are `role="alert"` and stay until dismissed; completions are `role="polite"`
+  and clear after six seconds. Previously every one of these rendered only
+  inside the Inspector, which is closed by default below 1440px — so clicking
+  Edit on an unreadable file, or finishing a 400 GB copy, produced no visible
+  change at all. This is also the first `aria-live` region in the application:
+  transfer progress and failures were entirely silent to screen readers.
+- `scripts/check-theme-tokens.mjs`, run in CI. Rejects a custom property that
+  resolves to itself, and requires the two light-theme token blocks to declare
+  the same set of tokens with the same values.
+- `scripts/check-css-order.mjs`, run in CI. Rejects a breakpoint override whose
+  property is re-declared by a base rule later in the file, where source order
+  silently cancels it.
+
+### Fixed
+
+- **Destructive colour and dialog elevation were missing from the dark theme**,
+  which is the default. `--danger-text` and `--shadow-strong` were defined as
+  `var(--danger-text)` and `var(--shadow-strong)` — self-referential, so they
+  resolved to nothing. The context menu's "Delete permanently", the delete
+  dialog's warning icon and editor errors all rendered in ordinary white, and
+  the delete dialog, context menu and editor window had no shadow. Introduced in
+  rc.3 by a bulk replacement that rewrote the token definitions along with their
+  usages. The light theme was unaffected, which is why it went unnoticed.
+- **Arrow keys and Ctrl/Cmd+A walked the unsorted entry list.** The panes render
+  a sorted array but the keyboard handler in `App` indexed the raw load order,
+  so sorting by size and pressing Down moved the highlight to a row elsewhere on
+  screen, and Select-all selected a different 500 items than the ones displayed.
+  In an application whose next action may be a permanent delete this is a
+  data-loss path, not an inconvenience. Introduced in rc.4 with sortable
+  columns. Arrow navigation now also scrolls the selected row into view, which
+  matters under virtualization where the row may not be mounted.
+- **The stacked layout below 1280px was broken by CSS source order.** The
+  breakpoint set `.transfer-strip { flex-direction: row }` but the base rule
+  below it set `column` at equal specificity, so the strip stayed vertical: a
+  278px near-empty bar wedged between the panes, pushing the destination pane
+  below the fold. It is now 50px and horizontal. All responsive blocks moved to
+  the end of the stylesheet, with a comment explaining why they must stay there.
+- Opening a file whose contents are not valid UTF-8 returned `500 internal
+  error`. `ErrInvalidText`, `ErrTooLarge` and `ErrNotFile` were mapped only in
+  `writeTransferError`, so the editor's own error path fell through to the
+  internal-error default. They now return 415, 413 and 400 with a usable
+  message.
+- Disabled icon buttons computed `opacity: 1` and kept their hover background,
+  so an unavailable action was indistinguishable from an available one.
+
 ## 0.2.0-rc.4 - 2026-07-26
 
 ### Added

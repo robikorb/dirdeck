@@ -466,6 +466,15 @@ func writeFSError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, "file changed during operation")
 	case errors.Is(err, appfs.ErrMountBoundary):
 		writeError(w, http.StatusConflict, "refusing to delete a mounted filesystem")
+	// These three were mapped only in writeTransferError, so opening a binary
+	// file in the editor answered "internal error" with a 500 — indistinguishable
+	// from a server fault, and the client had nothing useful to display.
+	case errors.Is(err, appfs.ErrTooLarge):
+		writeError(w, http.StatusRequestEntityTooLarge, "file exceeds editor size limit")
+	case errors.Is(err, appfs.ErrInvalidText):
+		writeError(w, http.StatusUnsupportedMediaType, "file is not valid UTF-8 text")
+	case errors.Is(err, appfs.ErrNotFile):
+		writeError(w, http.StatusBadRequest, "not a regular file")
 	case os.IsPermission(err):
 		writeError(w, http.StatusForbidden, "permission denied")
 	default:

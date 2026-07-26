@@ -20,7 +20,7 @@ in SQLite inside a persistent Docker volume.
 ## Features
 
 - Authenticated single-user web interface with Argon2id password hashing.
-- Dual-pane list and grid browsing.
+- Dual-pane list and grid browsing, with light and dark themes and a density control.
 - Dedicated item selectors plus Cmd/Ctrl+click, Shift+click, and Cmd/Ctrl+A
   multiple selection.
 - Drag-and-drop upload of files and whole folder trees, with per-file progress,

@@ -163,6 +163,16 @@ remove the current folder as a favorite, and clear recent locations.
 Clicking a volume opens it in the active pane. Clicking a favorite or a recent
 entry navigates the active pane to that folder.
 
+## Appearance
+
+The sidebar footer holds two groups of controls.
+
+**Theme** follows your operating system by default; the sun and moon buttons
+override it. **Density** switches list rows between compact and comfortable.
+
+Both are stored per browser, not per account, since they are device preferences
+rather than settings that should follow you to another machine.
+
 ## Favorites and recent folders
 
 Cmd/Ctrl+D favorites the current folder. Favorites, recent locations, pane

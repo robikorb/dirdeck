@@ -1,17 +1,34 @@
 :root {
+  color-scheme: dark;
   --bg-deep: #0c0e16;
+  --bg-body:
+    radial-gradient(1200px 700px at 15% 10%, rgba(56, 89, 160, 0.28), transparent 55%),
+    radial-gradient(900px 600px at 85% 80%, rgba(30, 58, 110, 0.35), transparent 50%),
+    linear-gradient(160deg, #10131d 0%, #0a0c12 55%, #121826 100%);
   --bg-panel: rgba(28, 32, 48, 0.55);
   --bg-panel-strong: rgba(36, 42, 62, 0.72);
   --bg-hover: rgba(255, 255, 255, 0.06);
   --bg-selected: rgba(59, 130, 246, 0.22);
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.14);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
   --text: #e8ecf7;
   --text-muted: #9aa3b8;
+  /* --accent is for fills, borders, and focus rings. Accent-coloured *text*
+     needs the lighter token: #3b82f6 measures 4.30:1 on bg-panel-strong, below
+     the 4.5:1 AA threshold. */
   --accent: #3b82f6;
+  --accent-text: #60a5fa;
+  --accent-fill: #2563eb;
+  --accent-on-fill: #ffffff;
   --accent-strong: #2563eb;
   --danger: #f87171;
+  --header-bg: rgba(20, 24, 36, 0.9);
+  --row-line: rgba(255, 255, 255, 0.04);
   --radius: 14px;
+  /* Row height is the density setting. App.tsx writes it here and uses the same
+     number for row virtualization; the two must never diverge. */
+  --list-row-height: 38px;
   --font: "Segoe UI Variable", "Segoe UI", "SF Pro Display", "Helvetica Neue", sans-serif;
   --mono: "SF Mono", "Cascadia Code", ui-monospace, monospace;
   color: var(--text);
@@ -19,6 +36,90 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Follow the operating system unless the user picked a theme explicitly. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --bg-deep: #eef1f7;
+    --bg-body:
+      radial-gradient(1200px 700px at 15% 10%, rgba(120, 156, 224, 0.22), transparent 55%),
+      radial-gradient(900px 600px at 85% 80%, rgba(90, 130, 200, 0.18), transparent 50%),
+      linear-gradient(160deg, #f3f6fc 0%, #e8ecf5 55%, #eef2fa 100%);
+    --bg-panel: rgba(255, 255, 255, 0.72);
+    --bg-panel-strong: rgba(255, 255, 255, 0.88);
+    --bg-hover: rgba(15, 23, 42, 0.05);
+    --bg-selected: rgba(37, 99, 235, 0.14);
+    --border: rgba(15, 23, 42, 0.12);
+    --border-strong: rgba(15, 23, 42, 0.22);
+    --glass-highlight: rgba(255, 255, 255, 0.7);
+    --text: #151a24;
+    --text-muted: #4d5666;
+    --accent: #2563eb;
+    --accent-text: #1d4ed8;
+    --accent-fill: #2563eb;
+    --accent-on-fill: #ffffff;
+    --accent-strong: #1d4ed8;
+    --danger: #b91c1c;
+    --header-bg: rgba(248, 250, 253, 0.92);
+    --row-line: rgba(15, 23, 42, 0.06);
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg-deep: #eef1f7;
+  --bg-body:
+    radial-gradient(1200px 700px at 15% 10%, rgba(120, 156, 224, 0.22), transparent 55%),
+    radial-gradient(900px 600px at 85% 80%, rgba(90, 130, 200, 0.18), transparent 50%),
+    linear-gradient(160deg, #f3f6fc 0%, #e8ecf5 55%, #eef2fa 100%);
+  --bg-panel: rgba(255, 255, 255, 0.72);
+  --bg-panel-strong: rgba(255, 255, 255, 0.88);
+  --bg-hover: rgba(15, 23, 42, 0.05);
+  --bg-selected: rgba(37, 99, 235, 0.14);
+  --border: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.22);
+  --glass-highlight: rgba(255, 255, 255, 0.7);
+  --text: #151a24;
+  --text-muted: #4d5666;
+  --accent: #2563eb;
+  --accent-text: #1d4ed8;
+  --accent-fill: #2563eb;
+  --accent-on-fill: #ffffff;
+  --accent-strong: #1d4ed8;
+  --danger: #b91c1c;
+  --header-bg: rgba(248, 250, 253, 0.92);
+  --row-line: rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-deep: #0c0e16;
+  --bg-body:
+    radial-gradient(1200px 700px at 15% 10%, rgba(56, 89, 160, 0.28), transparent 55%),
+    radial-gradient(900px 600px at 85% 80%, rgba(30, 58, 110, 0.35), transparent 50%),
+    linear-gradient(160deg, #10131d 0%, #0a0c12 55%, #121826 100%);
+  --bg-panel: rgba(28, 32, 48, 0.55);
+  --bg-panel-strong: rgba(36, 42, 62, 0.72);
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-selected: rgba(59, 130, 246, 0.22);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
+  --text: #e8ecf7;
+  --text-muted: #9aa3b8;
+  /* --accent is for fills, borders, and focus rings. Accent-coloured *text*
+     needs the lighter token: #3b82f6 measures 4.30:1 on bg-panel-strong, below
+     the 4.5:1 AA threshold. */
+  --accent: #3b82f6;
+  --accent-text: #60a5fa;
+  --accent-fill: #2563eb;
+  --accent-on-fill: #ffffff;
+  --accent-strong: #2563eb;
+  --danger: #f87171;
+  --header-bg: rgba(20, 24, 36, 0.9);
+  --row-line: rgba(255, 255, 255, 0.04);
 }
 
 * {
@@ -34,10 +135,7 @@ body,
 }
 
 body {
-  background:
-    radial-gradient(1200px 700px at 15% 10%, rgba(56, 89, 160, 0.28), transparent 55%),
-    radial-gradient(900px 600px at 85% 80%, rgba(30, 58, 110, 0.35), transparent 50%),
-    linear-gradient(160deg, #10131d 0%, #0a0c12 55%, #121826 100%);
+  background: var(--bg-body);
   color: var(--text);
 }
 
@@ -98,7 +196,7 @@ input:focus-visible,
 .inspector-rail-button:hover {
   background: var(--bg-selected);
   border-color: var(--border-strong);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 @media (max-width: 1439px) {
@@ -152,7 +250,7 @@ input:focus-visible,
   border: 1px solid var(--border);
   border-radius: var(--radius);
   backdrop-filter: blur(22px) saturate(1.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
 
 .pane {
@@ -285,12 +383,12 @@ input:focus-visible,
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  background: rgba(20, 24, 36, 0.9);
+  background: var(--header-bg);
 }
 
 .list-table td {
   padding: 8px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--row-line);
 }
 
 .list-table tr {
@@ -298,7 +396,7 @@ input:focus-visible,
 }
 
 .list-table tbody tr:not(.virtual-spacer) {
-  height: 38px;
+  height: var(--list-row-height);
 }
 
 .list-table .virtual-spacer,
@@ -1714,21 +1812,37 @@ input:focus-visible,
   align-items: center;
   gap: 6px;
   height: 30px;
-  padding: 0 10px;
+  padding: 0 12px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-panel-strong);
-  color: var(--text);
+  border: 1px solid transparent;
+  /* Filled: upload is the primary action in a pane and an outlined button in a
+     row of outlined icons is what made it unfindable. */
+  background: var(--accent-fill);
+  color: var(--accent-on-fill);
   cursor: pointer;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .upload-btn:hover:not(:disabled) {
+  background: var(--accent-strong);
+  filter: brightness(1.08);
+}
+
+/* Folder is the same action on a different input, so it reads as secondary. */
+.upload-btn.secondary {
+  background: var(--bg-panel-strong);
+  border-color: var(--border);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.upload-btn.secondary:hover:not(:disabled) {
   background: var(--bg-selected);
   border-color: var(--border-strong);
-  color: var(--accent);
+  color: var(--accent-text);
+  filter: none;
 }
 
 .upload-btn:disabled {
@@ -1802,4 +1916,36 @@ input:focus-visible,
 
 .upload-cancelled .upload-status {
   color: var(--text-muted);
+}
+
+
+/* ---- Appearance controls in the sidebar footer ---------------------------- */
+
+.side-appearance {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.side-appearance button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.side-appearance button:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.side-appearance button.active {
+  background: var(--bg-selected);
+  border-color: var(--border-strong);
+  color: var(--accent-text);
 }

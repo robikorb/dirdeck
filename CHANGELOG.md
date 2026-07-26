@@ -16,6 +16,12 @@ after the first stable release.
 
 ### Added
 
+- **Light theme.** Both themes are one token set: the system preference applies
+  by default and the sidebar footer overrides it. Every surface reads tokens, so
+  the second theme is a palette rather than a second stylesheet.
+- **Density control.** List rows switch between compact and comfortable. Row
+  height is owned by one constant in `App.tsx` that feeds both the stylesheet and
+  the virtualization arithmetic, so density cannot desynchronise them.
 - **Folder upload.** Drop a folder and its whole tree is recreated at the
   destination, or pick one with the new **Folder** button. The client walks the
   tree and sends one request per file with its relative path; the server creates
@@ -24,6 +30,12 @@ after the first stable release.
 
 ### Fixed
 
+- Accent-coloured text failed WCAG AA. `#3b82f6` measures 4.30:1 on the stronger
+  panel surface, below the 4.5:1 threshold, so accent text now uses a separate
+  lighter token. Every text token on both panel surfaces and the filled button
+  now measure 5.17:1 or better in both themes.
+- Upload is a filled primary button rather than one outlined control among
+  several, and Folder reads as its secondary sibling.
 - An upload queue can now be stopped. **Stop all** halts the whole batch; the
   per-file cancel only ever skipped the file in flight, so stopping a dropped
   `node_modules` meant clicking Cancel once per file for tens of thousands of

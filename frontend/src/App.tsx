@@ -16,12 +16,17 @@ import {
   Link2,
   List,
   LogOut,
+  Monitor,
+  Moon,
   PanelRightClose,
   PanelRightOpen,
   Pencil,
   RefreshCw,
+  Rows2,
+  Rows3,
   Star,
   StarOff,
+  Sun,
   Square,
   Trash2,
   Upload,
@@ -86,7 +91,14 @@ import type {
 const EditorModal = lazy(() => import('./EditorModal'))
 
 type ViewMode = 'list' | 'grid'
-const LIST_ROW_HEIGHT = 38
+type Density = 'compact' | 'comfortable'
+type ThemeChoice = 'system' | 'light' | 'dark'
+
+/** Single source of truth for row height. CSS reads it from --list-row-height,
+ *  virtualization reads the same number, so density cannot desynchronise them. */
+const ROW_HEIGHT: Record<Density, number> = { compact: 38, comfortable: 46 }
+const DENSITY_KEY = 'dirdeck.density'
+const THEME_KEY = 'dirdeck.theme'
 const GRID_ROW_HEIGHT = 146
 const GRID_MIN_COLUMN_WIDTH = 160
 const GRID_GAP = 14
@@ -255,6 +267,7 @@ function Pane({
   onOpenFile,
   onActivate,
   otherPaneName,
+  rowHeight,
   canCopySelection,
   canMoveSelection,
   canRenameSelection,
@@ -274,6 +287,7 @@ function Pane({
   onOpenFile: (volumeId: string, path: string, entry: DirEntry) => void
   onActivate: () => void
   otherPaneName: string
+  rowHeight: number
   canCopySelection: boolean
   canMoveSelection: boolean
   canRenameSelection: boolean
@@ -516,11 +530,11 @@ function Pane({
   const selectableCount = Math.min(500, state.entries.length)
   const listStart = Math.max(
     0,
-    Math.floor(Math.max(0, viewport.scrollTop - 32) / LIST_ROW_HEIGHT) - VIRTUAL_OVERSCAN_ROWS,
+    Math.floor(Math.max(0, viewport.scrollTop - 32) / rowHeight) - VIRTUAL_OVERSCAN_ROWS,
   )
   const listEnd = Math.min(
     state.entries.length,
-    listStart + Math.ceil(viewport.height / LIST_ROW_HEIGHT) + VIRTUAL_OVERSCAN_ROWS * 2,
+    listStart + Math.ceil(viewport.height / rowHeight) + VIRTUAL_OVERSCAN_ROWS * 2,
   )
   const visibleListEntries = state.entries.slice(listStart, listEnd)
   const gridContentWidth = Math.max(GRID_MIN_COLUMN_WIDTH, viewport.width - 16)
@@ -744,7 +758,7 @@ function Pane({
           </button>
           <button
             type="button"
-            className="upload-btn"
+            className="upload-btn secondary"
             aria-label="Upload a folder"
             title={writable ? 'Upload a folder and its contents' : 'Volume is read-only'}
             disabled={!writable}
@@ -910,7 +924,7 @@ function Pane({
             <tbody>
               {listStart > 0 ? (
                 <tr className="virtual-spacer" aria-hidden="true">
-                  <td colSpan={5} style={{ height: listStart * LIST_ROW_HEIGHT }} />
+                  <td colSpan={5} style={{ height: listStart * rowHeight }} />
                 </tr>
               ) : null}
               {visibleListEntries.map((entry) => (
@@ -971,7 +985,7 @@ function Pane({
                 <tr className="virtual-spacer" aria-hidden="true">
                   <td
                     colSpan={5}
-                    style={{ height: (state.entries.length - listEnd) * LIST_ROW_HEIGHT }}
+                    style={{ height: (state.entries.length - listEnd) * rowHeight }}
                   />
                 </tr>
               ) : null}
@@ -1341,6 +1355,12 @@ export default function App() {
   const [left, setLeft] = useState<PaneState>(() => ({ ...emptyPane(), view: 'grid' }))
   const [right, setRight] = useState<PaneState>(() => ({ ...emptyPane(), view: 'list' }))
   const [inspectorOpen, setInspectorOpen] = useState(true)
+  const [density, setDensity] = useState<Density>(
+    () => (localStorage.getItem(DENSITY_KEY) as Density) || 'compact',
+  )
+  const [theme, setTheme] = useState<ThemeChoice>(
+    () => (localStorage.getItem(THEME_KEY) as ThemeChoice) || 'system',
+  )
   const [meta, setMeta] = useState<FileMeta | null>(null)
   const [metaVolumeId, setMetaVolumeId] = useState('')
   const [activePane, setActivePane] = useState<ActivePane>('left')
@@ -1507,6 +1527,18 @@ export default function App() {
   useEffect(() => {
     void bootstrap().catch(() => setAuthed(false))
   }, [bootstrap])
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--list-row-height', `${ROW_HEIGHT[density]}px`)
+    localStorage.setItem(DENSITY_KEY, density)
+  }, [density])
+
+  useEffect(() => {
+    // 'system' removes the attribute so the prefers-color-scheme rule applies.
+    if (theme === 'system') document.documentElement.removeAttribute('data-theme')
+    else document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem(THEME_KEY, theme)
+  }, [theme])
 
   useEffect(() => {
     const narrow = window.matchMedia('(max-width: 1439px)')
@@ -2208,6 +2240,55 @@ export default function App() {
           </section>
         </div>
 
+        <div className="side-appearance" role="group" aria-label="Appearance">
+          <button
+            type="button"
+            className={theme === 'system' ? 'active' : ''}
+            aria-label="Match system theme"
+            title="Match system theme"
+            onClick={() => setTheme('system')}
+          >
+            <Monitor size={14} />
+          </button>
+          <button
+            type="button"
+            className={theme === 'light' ? 'active' : ''}
+            aria-label="Light theme"
+            title="Light theme"
+            onClick={() => setTheme('light')}
+          >
+            <Sun size={14} />
+          </button>
+          <button
+            type="button"
+            className={theme === 'dark' ? 'active' : ''}
+            aria-label="Dark theme"
+            title="Dark theme"
+            onClick={() => setTheme('dark')}
+          >
+            <Moon size={14} />
+          </button>
+          <span style={{ flex: 1 }} />
+          <button
+            type="button"
+            className={density === 'compact' ? 'active' : ''}
+            aria-label="Compact rows"
+            title="Compact rows"
+            onClick={() => setDensity('compact')}
+          >
+            <Rows3 size={14} />
+          </button>
+          <button
+            type="button"
+            className={density === 'comfortable' ? 'active' : ''}
+            aria-label="Comfortable rows"
+            title="Comfortable rows"
+            onClick={() => setDensity('comfortable')}
+          >
+            <Rows2 size={14} />
+          </button>
+        </div>
+
         <div className="side-footer">
           <div className="side-status">
             <strong>{username}</strong>
@@ -2243,6 +2324,7 @@ export default function App() {
         onOpenFile={(volumeId, path, entry) => void openEditor(volumeId, path, entry)}
         onActivate={() => setActivePane('left')}
         otherPaneName={rightVol?.name ?? 'right pane'}
+        rowHeight={ROW_HEIGHT[density]}
         canCopySelection={canCopyRight}
         canMoveSelection={canMoveRight}
         canRenameSelection={canRename}
@@ -2332,6 +2414,7 @@ export default function App() {
         onOpenFile={(volumeId, path, entry) => void openEditor(volumeId, path, entry)}
         onActivate={() => setActivePane('right')}
         otherPaneName={leftVol?.name ?? 'left pane'}
+        rowHeight={ROW_HEIGHT[density]}
         canCopySelection={canCopyLeft}
         canMoveSelection={canMoveLeft}
         canRenameSelection={canRename}

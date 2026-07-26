@@ -270,10 +270,15 @@ duplicated in `index.css` and must be changed together:
 
 | `App.tsx` | `index.css` | Meaning |
 |-----------|-------------|---------|
-| `LIST_ROW_HEIGHT` | `.list-table tbody tr:not(.virtual-spacer)` height | List row height |
+| `ROW_HEIGHT[density]` | `--list-row-height` | List row height, written from JS |
 | `GRID_ROW_HEIGHT` | `.grid-item` height + `.grid` gap | Grid row pitch |
 | `GRID_MIN_COLUMN_WIDTH` | `.grid` `minmax()` first value | Column breakpoint |
 | `GRID_GAP` | `.grid` gap | Column and row gap |
+
+Row height is the density setting, so it cannot be a constant in two places.
+`App.tsx` owns `ROW_HEIGHT` and writes it to the `--list-row-height` custom
+property; CSS reads that variable and the virtualization arithmetic uses the same
+number. Never hard-code a row height in the stylesheet again.
 
 A cell that can grow breaks this silently: the list looked correct until a long
 filename wrapped, after which the scroll offset drifted further with every row.
@@ -283,6 +288,19 @@ a list cell with variable height, and do not remove the clipping without also
 making the row height dynamic.
 
 ## Theme direction
+
+Both themes are one token set. `:root` carries dark, a `prefers-color-scheme:
+light` rule carries light for users who have not chosen, and `data-theme` on the
+root element lets an explicit choice win in either direction. Every surface reads
+tokens — no component hard-codes a colour — which is what makes a second theme a
+palette change rather than a rewrite.
+
+Accent colour needs two tokens. `--accent` is for fills, borders, and focus
+rings; `--accent-text` is the lighter value used when the accent is text, because
+the fill colour measures 4.30:1 on `--bg-panel-strong` and fails AA. Contrast for
+every text token on both panel surfaces, plus the filled button, is verifiable
+from the stylesheet; the current worst case is 5.17:1.
+
 
 Use dark smoked-glass surfaces over a restrained blue and graphite backdrop.
 Create glass through translucency, blur, subtle inner highlights, and fine

@@ -131,6 +131,13 @@ Rename is limited to one name component in the existing parent folder. It
 rejects separators, traversal, volume roots, symlinks, read-only volumes, and
 existing destination names.
 
+Changing only capitalisation works on case-insensitive filesystems. macOS APFS
+and Windows NTFS through Docker Desktop treat `notes.txt` and `Notes.txt` as one
+entry, so `RENAME_NOREPLACE` reports `EEXIST` against the file being renamed. The
+server distinguishes that from a real collision by comparing device and inode,
+and renames through a temporary name when they match. A genuine collision is
+still `409`.
+
 Delete accepts JSON `{ "paths": ["one", "folder/two"] }` and retains
 backward compatibility with `{ "path": "one" }`. It returns `204` on success.
 The batch is limited to 500 top-level paths. All paths are validated before the

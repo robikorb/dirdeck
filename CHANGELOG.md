@@ -3,6 +3,16 @@
 All notable changes are recorded here. The project follows semantic versioning
 after the first stable release.
 
+## Unreleased
+
+### Fixed
+
+- Renaming a file to change only its capitalisation returned `500 internal error`
+  on macOS and Windows. Those filesystems are case-insensitive through Docker
+  Desktop, so `notes.txt` and `Notes.txt` are one entry and the no-replace rename
+  reported a collision against the file itself. The server now compares device and
+  inode to tell that from a real collision and renames through a temporary name.
+
 ## 0.2.0-rc.3 - 2026-07-26
 
 ### Added

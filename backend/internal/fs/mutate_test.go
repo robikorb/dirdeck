@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -168,5 +169,47 @@ func TestDeleteEntriesBatchAndCollapseDescendants(t *testing.T) {
 		if _, err := os.Lstat(filepath.Join(rw, rel)); !os.IsNotExist(err) {
 			t.Fatalf("%s still exists: %v", rel, err)
 		}
+	}
+}
+
+// A case-insensitive filesystem reports EEXIST when only capitalisation changes,
+// because both names are the same entry. That is a legitimate rename and must not
+// surface as a collision — or, as it did, an opaque 500.
+func TestRenameEntryChangesOnlyCase(t *testing.T) {
+	rw, svc := setupMutableFS(t)
+
+	meta, err := svc.RenameEntry("rw", "notes.md", "Notes.MD")
+	if err != nil {
+		t.Fatalf("case-only rename failed: %v", err)
+	}
+	if meta.Name != "Notes.MD" {
+		t.Fatalf("unexpected name after rename: %q", meta.Name)
+	}
+	// Content must survive the temporary hop.
+	data, err := os.ReadFile(filepath.Join(rw, meta.Name))
+	if err != nil || string(data) != "# Original\n" {
+		t.Fatalf("content after case rename: err=%v got=%q", err, data)
+	}
+	// No temporary name may be left behind, and the old name must be gone.
+	entries, _ := os.ReadDir(rw)
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".dirdeck-rename-") {
+			t.Fatalf("temporary rename file left behind: %s", e.Name())
+		}
+	}
+}
+
+// A genuinely different file with the target name must still be refused.
+func TestRenameEntryStillRefusesRealCollision(t *testing.T) {
+	rw, svc := setupMutableFS(t)
+
+	if _, err := svc.RenameEntry("rw", "notes.md", "taken.md"); !errors.Is(err, appfs.ErrExists) {
+		t.Fatalf("expected ErrExists, got %v", err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(rw, "taken.md")); string(b) != "taken" {
+		t.Fatal("a real collision overwrote the destination")
+	}
+	if b, _ := os.ReadFile(filepath.Join(rw, "notes.md")); string(b) != "# Original\n" {
+		t.Fatal("a refused rename modified the source")
 	}
 }

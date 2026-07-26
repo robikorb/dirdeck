@@ -232,6 +232,10 @@ boundary as browsing and transfers.
 
 - Rename is limited to the existing parent directory, rejects symlinks and
   volume roots, and never replaces an existing destination.
+- A capitalisation-only rename on a case-insensitive filesystem goes through a
+  temporary name. The two paths are confirmed to be the same device and inode
+  first, so this never turns a real collision into an overwrite, and the original
+  name is restored if the second hop fails.
 - Editable files are limited to an allow-listed text/code set and 2 MiB.
 - Saves require CSRF protection and reject invalid UTF-8.
 - The client sends the last observed modification time; a changed file returns

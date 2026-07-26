@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -61,6 +62,14 @@ func (s *Service) RenameEntry(volumeID, rel, newName string) (*Meta, error) {
 	err = unix.Renameat2(unix.AT_FDCWD, source.AbsPath, unix.AT_FDCWD, destAbs, unix.RENAME_NOREPLACE)
 	if err != nil {
 		if errors.Is(err, syscall.EEXIST) {
+			// On a case-insensitive filesystem — macOS APFS and Windows NTFS
+			// through Docker Desktop — "notes.txt" and "Notes.txt" are the same
+			// entry, so NOREPLACE reports EEXIST against the file being renamed.
+			// Changing only capitalisation is a legitimate operation, so detect
+			// that case by identity and go through a temporary name.
+			if same, serr := sameFile(source.AbsPath, destAbs); serr == nil && same {
+				return s.renameViaTemp(volumeID, source.AbsPath, destAbs, parent.AbsPath, destRel)
+			}
 			return nil, ErrExists
 		}
 		if !errors.Is(err, syscall.ENOSYS) && !errors.Is(err, syscall.EINVAL) &&
@@ -365,4 +374,40 @@ func metaFromResolved(res *Resolved) *Meta {
 		ModTime:   res.Info.ModTime().UTC(),
 		Mode:      res.Info.Mode().String(),
 	}
+}
+
+// sameFile reports whether two paths resolve to the same directory entry. Used to
+// tell a case-only rename on a case-insensitive filesystem from a real collision.
+func sameFile(a, b string) (bool, error) {
+	var sa, sb unix.Stat_t
+	if err := unix.Lstat(a, &sa); err != nil {
+		return false, err
+	}
+	if err := unix.Lstat(b, &sb); err != nil {
+		return false, err
+	}
+	return sa.Dev == sb.Dev && sa.Ino == sb.Ino, nil
+}
+
+// renameViaTemp performs a rename in two hops through a unique temporary name.
+// A case-insensitive filesystem cannot go directly from "notes.txt" to
+// "Notes.txt"; the intermediate name breaks the collision. On failure the
+// original name is restored so the entry is never left under the temporary name.
+func (s *Service) renameViaTemp(volumeID, sourceAbs, destAbs, parentAbs, destRel string) (*Meta, error) {
+	token := make([]byte, 8)
+	if _, err := rand.Read(token); err != nil {
+		return nil, err
+	}
+	tempAbs := filepath.Join(parentAbs, ".dirdeck-rename-"+hex.EncodeToString(token))
+	if err := os.Rename(sourceAbs, tempAbs); err != nil {
+		return nil, err
+	}
+	if err := os.Rename(tempAbs, destAbs); err != nil {
+		// Put it back rather than leaving a dotfile where the user's file was.
+		if restoreErr := os.Rename(tempAbs, sourceAbs); restoreErr != nil {
+			return nil, fmt.Errorf("rename failed and the original name could not be restored: %w", err)
+		}
+		return nil, err
+	}
+	return s.Stat(volumeID, destRel)
 }

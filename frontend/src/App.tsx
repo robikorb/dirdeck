@@ -283,6 +283,7 @@ function Pane({
   } | null>(null)
   const [uploads, setUploads] = useState<UploadItem[]>([])
   const [dragActive, setDragActive] = useState(false)
+  const [dropNotice, setDropNotice] = useState<string | null>(null)
   const [uploadConflict, setUploadConflict] = useState<{ name: string; resolve: (a: UploadConflictAction | 'cancel', all: boolean) => void } | null>(null)
   const uploadAllPolicy = useRef<UploadConflictAction | null>(null)
   const uploadAbort = useRef<(() => void) | null>(null)
@@ -611,8 +612,33 @@ function Pane({
     event.preventDefault()
     setDragActive(false)
     onActivate()
-    // Directory entries arrive as zero-byte files; folder upload is a later feature.
-    const files = Array.from(event.dataTransfer.files).filter((f) => f.size > 0 || f.type !== '')
+
+    // webkitGetAsEntry is the only reliable way to tell a dropped folder from a
+    // file. Sniffing size/type would also throw away legitimately empty files,
+    // which the server accepts.
+    const items = Array.from(event.dataTransfer.items ?? [])
+    const files: File[] = []
+    let folders = 0
+    if (items.length > 0 && typeof items[0].webkitGetAsEntry === 'function') {
+      for (const item of items) {
+        if (item.kind !== 'file') continue
+        const entry = item.webkitGetAsEntry()
+        if (entry?.isDirectory) {
+          folders += 1
+          continue
+        }
+        const file = item.getAsFile()
+        if (file) files.push(file)
+      }
+    } else {
+      files.push(...Array.from(event.dataTransfer.files))
+    }
+
+    setDropNotice(
+      folders > 0
+        ? `Folder upload is not supported yet — skipped ${folders} folder${folders > 1 ? 's' : ''}.`
+        : null,
+    )
     void runUploads(files)
   }
 
@@ -651,13 +677,14 @@ function Pane({
           </button>
           <button
             type="button"
-            className="icon-btn"
+            className="upload-btn"
             aria-label="Upload files"
             title={writable ? 'Upload files into this folder' : 'Volume is read-only'}
             disabled={!writable}
             onClick={() => fileInputRef.current?.click()}
           >
-            <Upload size={16} />
+            <Upload size={15} aria-hidden />
+            <span>Upload</span>
           </button>
           <input
             ref={fileInputRef}
@@ -749,6 +776,14 @@ function Pane({
             <span>Drop files into {state.path || volume?.name}</span>
           </div>
         ) : null}
+        {dropNotice ? (
+          <div className="drop-notice" role="status">
+            <span>{dropNotice}</span>
+            <button type="button" className="text-btn" onClick={() => setDropNotice(null)}>
+              Dismiss
+            </button>
+          </div>
+        ) : null}
         {state.loading ? <p className="muted">Loading…</p> : null}
         {state.error ? (
           <div className="pane-error">
@@ -765,6 +800,21 @@ function Pane({
           <p className="muted truncate-note">
             Listing truncated at 10,000 entries. Narrow the folder or use search on the host.
           </p>
+        ) : null}
+        {!state.loading && !state.error && state.entries.length === 0 && !dragActive ? (
+          <div className={`empty-folder${writable ? ' empty-folder-droppable' : ''}`}>
+            {writable ? (
+              <>
+                <Upload size={26} aria-hidden />
+                <p>Drop files here to upload</p>
+                <button type="button" className="text-btn" onClick={() => fileInputRef.current?.click()}>
+                  or choose files
+                </button>
+              </>
+            ) : (
+              <p className="muted">This folder is empty.</p>
+            )}
+          </div>
         ) : null}
         {!state.loading && !state.error && state.view === 'list' ? (
           <table className="list-table">

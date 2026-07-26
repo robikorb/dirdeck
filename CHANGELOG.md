@@ -16,6 +16,12 @@ after the first stable release.
 
 ### Fixed
 
+- The upload control is a labelled **Upload** button instead of an unlabelled
+  arrow among four other unlabelled icons, and an empty folder now shows its
+  drop target instead of an empty rectangle.
+- Dropped folders are detected with `webkitGetAsEntry` and reported as skipped.
+  The previous size-and-type guess also discarded genuinely empty files, which
+  the server accepts.
 - `scripts/backup.sh` no longer archives the wrong volume. It reads
   `DIRDECK_DATA_VOLUME`, falls back to the pre-rename `LGFM_DATA_VOLUME`, and
   refuses to run when the named volume does not exist. Docker creates a missing

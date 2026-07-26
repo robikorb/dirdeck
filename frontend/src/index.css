@@ -1708,3 +1708,65 @@ input:focus-visible,
   border-color: var(--border-strong);
   background: var(--bg-hover);
 }
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel-strong);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.upload-btn:hover:not(:disabled) {
+  background: var(--bg-selected);
+  border-color: var(--border-strong);
+  color: var(--accent);
+}
+
+.upload-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.drop-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-panel-strong);
+  font-size: 12px;
+}
+
+.empty-folder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 220px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.empty-folder p {
+  margin: 0;
+}
+
+.empty-folder-droppable {
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+  margin: 8px;
+}

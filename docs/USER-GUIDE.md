@@ -121,9 +121,14 @@ destination, or press **Folder** to pick one. Subfolders and nesting are
 preserved. Empty directories inside the tree are not created, because the browser
 only reports files.
 
-Large trees show a running count instead of thousands of rows. Cancelling stops
-the current file; files already uploaded stay. Dropping the same folder again
-with **keep both** or **replace** is a usable way to finish an interrupted tree.
+Dropping more than 25 files asks for confirmation first, showing the file count
+and total size. A `node_modules` folder is tens of thousands of files, and that
+is worth knowing before the queue starts rather than after.
+
+Large trees show a running count instead of thousands of rows. **Stop all** halts
+the whole queue; the per-file **Cancel** only skips the file in flight. Anything
+already uploaded stays. Dropping the same folder again with **keep both** or
+**replace** is a usable way to finish an interrupted tree.
 
 Resumable upload is not implemented — a cancelled file restarts from the
 beginning rather than continuing.

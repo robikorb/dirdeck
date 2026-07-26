@@ -24,6 +24,12 @@ after the first stable release.
 
 ### Fixed
 
+- An upload queue can now be stopped. **Stop all** halts the whole batch; the
+  per-file cancel only ever skipped the file in flight, so stopping a dropped
+  `node_modules` meant clicking Cancel once per file for tens of thousands of
+  files. Dropping more than 25 files also asks for confirmation first, showing
+  the count and total size.
+- A cancelled upload is reported as cancelled rather than failed.
 - The upload control is a labelled **Upload** button instead of an unlabelled
   arrow among four other unlabelled icons, and an empty folder now shows its
   drop target instead of an empty rectangle.

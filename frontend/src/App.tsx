@@ -91,6 +91,8 @@ const GRID_ROW_HEIGHT = 146
 const GRID_MIN_COLUMN_WIDTH = 160
 const GRID_GAP = 14
 const VIRTUAL_OVERSCAN_ROWS = 8
+// Above this many files a drop is confirmed first; a dropped node_modules is 40k+.
+const LARGE_UPLOAD_CONFIRM = 25
 type ActivePane = 'left' | 'right'
 type SectionKey = 'volumes' | 'favorites' | 'recent'
 
@@ -238,7 +240,7 @@ type UploadItem = {
   subDir: string
   loaded: number
   total: number
-  status: 'pending' | 'uploading' | 'done' | 'skipped' | 'error'
+  status: 'pending' | 'uploading' | 'done' | 'skipped' | 'cancelled' | 'error'
   error?: string
 }
 
@@ -292,6 +294,12 @@ function Pane({
   const [uploadConflict, setUploadConflict] = useState<{ name: string; resolve: (a: UploadConflictAction | 'cancel', all: boolean) => void } | null>(null)
   const uploadAllPolicy = useRef<UploadConflictAction | null>(null)
   const uploadAbort = useRef<(() => void) | null>(null)
+  const stopAllUploads = useRef(false)
+  const [confirmBatch, setConfirmBatch] = useState<{
+    count: number
+    bytes: number
+    resolve: (go: boolean) => void
+  } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const paneBodyRef = useRef<HTMLDivElement>(null)
@@ -540,7 +548,20 @@ function Pane({
   // makes per-file progress meaningless.
   const runUploads = useCallback(async (picked: PickedFile[]) => {
     if (!writable || picked.length === 0) return
+
+    // A dropped node_modules is 40k+ files. Confirm before committing to a queue
+    // that would take hours, and say how big it actually is.
+    if (picked.length > LARGE_UPLOAD_CONFIRM) {
+      const bytes = picked.reduce((sum, p) => sum + p.file.size, 0)
+      const go = await new Promise<boolean>((resolve) => {
+        setConfirmBatch({ count: picked.length, bytes, resolve })
+      })
+      setConfirmBatch(null)
+      if (!go) return
+    }
+
     uploadAllPolicy.current = null
+    stopAllUploads.current = false
     const queued: UploadItem[] = picked.map((p, i) => ({
       id: `${Date.now()}-${i}-${p.subDir}/${p.file.name}`,
       name: p.file.name,
@@ -552,6 +573,17 @@ function Pane({
     setUploads(queued)
 
     for (let i = 0; i < picked.length; i += 1) {
+      if (stopAllUploads.current) {
+        // Mark everything still waiting, so the strip does not look stalled.
+        setUploads((list) =>
+          list.map((u) =>
+            u.status === 'pending' || u.status === 'uploading'
+              ? { ...u, status: 'cancelled', error: 'stopped' }
+              : u,
+          ),
+        )
+        break
+      }
       const file = picked[i].file
       const subDir = picked[i].subDir
       const item = queued[i]
@@ -594,7 +626,11 @@ function Pane({
           patch({ status: result.skipped ? 'skipped' : 'done', loaded: file.size })
         } catch (err) {
           uploadAbort.current = null
-          patch({ status: 'error', error: err instanceof Error ? err.message : 'upload failed' })
+          const message = err instanceof Error ? err.message : 'upload failed'
+          patch({
+            status: message === 'upload cancelled' ? 'cancelled' : 'error',
+            error: message === 'upload cancelled' ? 'cancelled' : message,
+          })
         }
         break
       }
@@ -1005,6 +1041,21 @@ function Pane({
       </div>
       {uploads.length > 0 ? (
         <div className="upload-strip" role="status" aria-label="Upload progress">
+          {uploads.length <= 6 && uploads.some((u) => u.status === 'pending' || u.status === 'uploading') ? (
+            <div className="upload-summary">
+              <span>Uploading {uploads.length} file{uploads.length > 1 ? 's' : ''}</span>
+              <button
+                type="button"
+                className="dialog-danger upload-stop"
+                onClick={() => {
+                  stopAllUploads.current = true
+                  uploadAbort.current?.()
+                }}
+              >
+                Stop all
+              </button>
+            </div>
+          ) : null}
           {uploads.length > 6 ? (
             <div className="upload-summary">
               <span>
@@ -1016,12 +1067,24 @@ function Pane({
                   {uploads.filter((u) => u.status === 'error').length} failed
                 </span>
               ) : null}
+              {uploads.some((u) => u.status === 'pending' || u.status === 'uploading') ? (
+                <button
+                  type="button"
+                  className="dialog-danger upload-stop"
+                  onClick={() => {
+                    stopAllUploads.current = true
+                    uploadAbort.current?.()
+                  }}
+                >
+                  Stop all
+                </button>
+              ) : null}
             </div>
           ) : null}
           {(uploads.length > 6
-            ? uploads.filter(
-                (u) => u.status === 'uploading' || u.status === 'error',
-              ).slice(0, 6)
+            ? uploads
+                .filter((u) => u.status === 'uploading' || u.status === 'error')
+                .slice(0, 6)
             : uploads
           ).map((u) => (
             <div key={u.id} className={`upload-row upload-${u.status}`}>
@@ -1041,6 +1104,8 @@ function Pane({
                   ? 'done'
                   : u.status === 'skipped'
                     ? 'skipped'
+                    : u.status === 'cancelled'
+                    ? 'cancelled'
                     : u.status === 'error'
                       ? (u.error ?? 'failed')
                       : u.status === 'uploading'
@@ -1054,6 +1119,27 @@ function Pane({
               ) : null}
             </div>
           ))}
+        </div>
+      ) : null}
+      {confirmBatch ? (
+        <div className="upload-conflict" role="alertdialog" aria-label="Confirm large upload">
+          <strong>
+            Upload {confirmBatch.count.toLocaleString()} files ({formatSize(confirmBatch.bytes)})?
+          </strong>
+          <span className="muted">
+            Files upload one at a time. A queue this size can take a long time; you can stop it
+            at any point and keep whatever finished.
+          </span>
+          <div className="upload-conflict-actions">
+            <button type="button" onClick={() => confirmBatch.resolve(true)}>Start upload</button>
+            <button
+              type="button"
+              className="text-btn dialog-cancel"
+              onClick={() => confirmBatch.resolve(false)}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       ) : null}
       {uploadConflict ? (

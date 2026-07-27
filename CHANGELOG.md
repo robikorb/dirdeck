@@ -3,7 +3,7 @@
 All notable changes are recorded here. The project follows semantic versioning
 after the first stable release.
 
-## Unreleased
+## 0.2.0-rc.6 - 2026-07-27
 
 ### Changed
 

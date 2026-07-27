@@ -105,26 +105,16 @@ completes normally.
 Your project name, containers, state volume, credentials, and volume registry
 are unchanged. Nothing is migrated.
 
-### Upgrading to Unreleased
+### Upgrading to 0.2.0-rc.6
 
-**You will be signed out once.** Session identifiers are now stored as SHA-256
-hashes instead of plaintext, so a database read no longer yields usable session
-tokens. Existing rows were written in the old format and no longer match, so
-every browser must log in again after this upgrade. No other action is needed;
-your administrator credentials in `secrets/` are unchanged.
+No database or mount migration is required. Existing credentials, sessions,
+favorites, pane state, transfer history, and host bind mounts are preserved.
 
-Stale pre-upgrade session rows are ignored and disappear when they expire
-(`DIRDECK_SESSION_TTL_HOURS`, 12 hours by default). To clear them immediately,
-recreate the container — startup pruning removes expired and revoked rows.
+`DIRDECK_MAX_UPLOAD_BYTES` is new and optional. It defaults to 1 TiB per file;
+set the value in bytes in `.env` only when a different ceiling is required.
 
-New environment variables (all optional, documented in
-[INSTALL.md](INSTALL.md)): `DIRDECK_BIND_ADDR`, `DIRDECK_LOGIN_RATE_LIMIT_MAX`,
-`DIRDECK_LOGIN_RATE_LIMIT_SEC`, `DIRDECK_SESSION_TTL_HOURS`, `DIRDECK_BACKUP_RETENTION`.
-
-`DIRDECK_BIND_ADDR` defaults to `127.0.0.1`. If you previously reached the app
-from another machine on your network, that worked because the port was
-published on every interface. Set `DIRDECK_BIND_ADDR=0.0.0.0` in `.env` to restore
-it, and read the exposure warning in [SECURITY.md](SECURITY.md) first.
+The desktop keeps the two-pane workflow. Phones now show one active pane and
+use a guided source-to-destination step for Copy and Move.
 
 ## Backup
 

@@ -7,6 +7,23 @@ after the first stable release.
 
 ### Changed
 
+- **The transfer strip is two labelled buttons instead of four directional
+  icons.** Copy and Move now follow the active pane — the arrow points at the
+  destination and the accessible name says which volume it is — and the strip
+  states the reason when they are unavailable: "Backup is read-only.", "Select
+  items in Media first.", "A transfer is already running." Previously seven
+  unlabeled 28px icons sat between the panes, chevrons and double-arrows were
+  indistinguishable at 14px, and with a read-only destination every control was
+  disabled except **Delete permanently** — leaving the destructive action as the
+  only thing you could press, with nothing on screen explaining why.
+- **Touch and small screens.** The interaction model is unchanged, but the
+  chrome stops eating the screen and the controls stop being 16px. Measured at
+  390x844: the sidebar went from 200px to 152px (24% of the phone down to 18%)
+  and became a horizontal volume switcher, each pane went from 296px to 859px,
+  and controls under the 44px touch target went from 44 of 45 to **0 of 55**.
+  Below 1280px the sidebar no longer clips the second volume. Desktop density is
+  untouched — icon buttons stay 28-32px and rows stay 38px.
+
 - **`scripts/update.sh` now works on both stacks and needs no version number.**
   It detects whether the image stack or the source stack is running, and on the
   image stack resolves the newest published release itself, records it in

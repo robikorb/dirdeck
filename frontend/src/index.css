@@ -255,7 +255,7 @@ input:focus-visible,
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) 36px minmax(0, 1fr) minmax(0, 280px);
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) 116px minmax(0, 1fr) minmax(0, 280px);
   grid-template-areas: "side left transfer right inspector";
   gap: 12px;
   height: 100%;
@@ -727,7 +727,9 @@ input:focus-visible,
   padding: 10px 4px;
 }
 
-.transfer-strip button {
+/* Icon-only tools. The labelled Copy/Move actions size themselves, so they
+   must be excluded — `.transfer-strip button` outranks `.transfer-action`. */
+.transfer-strip button:not(.transfer-action) {
   width: 28px;
   height: 28px;
   border-radius: 8px;
@@ -2064,13 +2066,13 @@ input:focus-visible,
 
 @media (min-width: 1440px) {
   .app-shell.inspector-collapsed {
-    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) 36px minmax(0, 1fr) 40px;
+    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) 116px minmax(0, 1fr) 40px;
   }
 }
 
 @media (max-width: 1439px) {
   .app-shell {
-    grid-template-columns: minmax(170px, 200px) minmax(0, 1fr) 36px minmax(0, 1fr);
+    grid-template-columns: minmax(170px, 200px) minmax(0, 1fr) 116px minmax(0, 1fr);
     grid-template-areas: "side left transfer right";
   }
   .inspector {
@@ -2234,4 +2236,229 @@ input:focus-visible,
 .transfer-strip button:disabled:hover {
   background: transparent;
   color: inherit;
+}
+
+/* ---------------------------------------------------------------------------
+   Touch and small screens.
+
+   The interaction model stays the same — two panes, one above the other. What
+   changes is that the chrome stops eating the screen and the controls stop
+   being 16px. Measured at 390x844 before this block: the sidebar took 200px of
+   844 (24% of the phone, for one volume), each pane got 296px — five or six
+   rows — and 44 of 45 controls were under the 44px touch guideline.
+
+   Below 1280px the sidebar is a full-width row, so a vertical list is the wrong
+   shape for it regardless of touch; it becomes a horizontal volume switcher and
+   the favorites and recents lists move into their own scrollers.
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 1279px) {
+  .side-panel {
+    max-height: none;
+  }
+
+  .side-sections {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 6px 6px 8px;
+  }
+
+  .side-section {
+    flex: 0 0 auto;
+    max-width: 60vw;
+  }
+
+  .side-section + .side-section {
+    border-top: 0;
+    border-left: 1px solid var(--border);
+    padding-left: 8px;
+  }
+
+  /* Volumes are the reason the sidebar exists on a small screen; give them the
+     room and lay them out along the row rather than down it. */
+  .side-section[data-section='volumes'] {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .side-section[data-section='volumes'] .side-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px;
+  }
+
+  .side-section[data-section='volumes'] .side-list li {
+    flex: 0 1 auto;
+  }
+
+  .side-section[data-section='volumes'] .side-list button {
+    width: auto;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .side-section[data-section='volumes'] .side-label {
+    word-break: normal;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    /* The sidebar sizes to its content instead of holding a fixed 200px, and
+       the panes take what is left. */
+    grid-template-rows: auto minmax(320px, 1fr) auto minmax(320px, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+
+  /* The product name is not worth 44px on a 390px screen — the volume you are
+     standing in is. Everything below scrolls inside a fixed strip so favorites,
+     recents and the appearance controls stay reachable without owning a third
+     of the phone. */
+  .side-brand {
+    display: none;
+  }
+
+  .side-panel {
+    max-height: 152px;
+  }
+
+  .side-sections {
+    flex: 1;
+    max-height: none;
+  }
+
+  /* A pointer this imprecise needs the whole row, not a 16px glyph inside it.
+     44px is the WCAG 2.5.5 target size; the desktop layout keeps its density. */
+  .icon-btn,
+  .transfer-strip button,
+  .side-list button,
+  .side-section-toggle,
+  .side-appearance button,
+  .side-section-header .text-btn,
+  .breadcrumb button,
+  .upload-btn,
+  .entry-select-button,
+  .entry-edit-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* The row checkbox and pencil are inside fixed-width table cells, so a 44px
+     minimum on the button alone would overflow the cell rather than grow it. */
+  .entry-select-cell,
+  .entry-action-cell {
+    width: 48px;
+  }
+
+  /* The switcher must stay a strip. Laying the three sections out in a row made
+     the volumes list wrap, and the sidebar grew from 200px to 302px — the
+     opposite of the point. Cap it and let it scroll sideways. */
+  .side-sections {
+    max-height: 96px;
+  }
+
+  .list-table th button {
+    min-height: 44px;
+  }
+
+  .pane-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Row height is normally driven by the density control, which is a desktop
+     affordance; a finger needs the same 44px regardless of what it is set to. */
+  .list-table td {
+    height: max(44px, var(--list-row-height));
+  }
+
+  .transfer-strip {
+    gap: 4px;
+    padding: 6px 4px;
+  }
+
+  /* Two panes plus a transfer bar do not fit a phone at once, so the document
+     scrolls. Keep the status region pinned to the viewport rather than letting
+     a failure scroll off the top. */
+  .status-region {
+    position: fixed;
+    width: calc(100vw - 16px);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Transfer strip: two labelled actions instead of four directional icons.
+   --------------------------------------------------------------------------- */
+
+.transfer-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--bg-panel-strong);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.transfer-action:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.transfer-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.transfer-reason {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-muted);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* The destination name when nothing is wrong: present, but not competing with
+   the buttons above it. */
+.transfer-reason-quiet {
+  opacity: 0.75;
+}
+
+.transfer-strip-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin: 2px 0;
+}
+
+/* The strip is a horizontal bar in the stacked layout, so its children stop
+   being full-width blocks. */
+@media (max-width: 1279px) {
+  .transfer-action {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .transfer-strip-divider {
+    width: 1px;
+    height: 24px;
+    margin: 0 4px;
+  }
+
+  .transfer-reason {
+    flex: 0 1 auto;
+    text-align: left;
+  }
 }

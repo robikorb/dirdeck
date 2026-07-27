@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom'
 import {
   AlertTriangle,
   ArrowDown,
+  ArrowLeft,
   ArrowLeftRight,
+  ArrowRight,
   ArrowUp,
   CheckSquare2,
   CheckCircle2,
@@ -2341,6 +2343,25 @@ export default function App() {
     activeSelectionCount === 1 && activeEntry && !activeEntry.isSymlink && !activeVolume?.readOnly,
   )
   const canDelete = Boolean(activeSelectionCount > 0 && !activeVolume?.readOnly)
+
+  // Transfers run away from the active pane, so the strip's two buttons point
+  // wherever the user is standing rather than offering both directions at once.
+  const transferDirection: 'ltr' | 'rtl' = activePane === 'left' ? 'ltr' : 'rtl'
+  const transferDestVol = transferDirection === 'ltr' ? rightVol : leftVol
+  const transferDestName = transferDestVol?.name || 'the other pane'
+  const canCopyActive = transferDirection === 'ltr' ? canCopyRight : canCopyLeft
+  const canMoveActive = transferDirection === 'ltr' ? canMoveRight : canMoveLeft
+
+  // Ordered from the most basic missing precondition to the most specific, so
+  // the message names the one thing the user can act on next.
+  const transferBlockedReason = (() => {
+    if (canCopyActive) return null
+    if (busyTransfer) return 'A transfer is already running.'
+    if (activeSelectionCount === 0) return `Select items in ${activeVolume?.name || 'a pane'} first.`
+    if (!transferDestVol) return 'Choose a volume in the other pane.'
+    if (transferDestVol.readOnly) return `${transferDestVol.name} is read-only.`
+    return null
+  })()
   const activeCount = jobs.filter((j) =>
     ['queued', 'running', 'cancelling', 'conflict'].includes(j.status),
   ).length
@@ -2392,7 +2413,7 @@ export default function App() {
         </div>
 
         <div className="side-sections">
-          <section className="side-section">
+          <section className="side-section" data-section="volumes">
             <div className="side-section-header">
               <button
                 type="button"
@@ -2438,7 +2459,7 @@ export default function App() {
             ) : null}
           </section>
 
-          <section className="side-section">
+          <section className="side-section" data-section="favorites">
             <div className="side-section-header">
               <button
                 type="button"
@@ -2483,7 +2504,7 @@ export default function App() {
             ) : null}
           </section>
 
-          <section className="side-section">
+          <section className="side-section" data-section="recent">
             <div className="side-section-header">
               <button
                 type="button"
@@ -2623,42 +2644,43 @@ export default function App() {
       />
 
       <div className="glass transfer-strip" aria-label="Transfer controls">
+        {/* Four directional icons became two labelled buttons that follow the
+            active pane. Chevrons and double-arrows at 14px did not distinguish
+            copy from move at a glance, and with a read-only destination every
+            one of them was disabled except delete — leaving the destructive
+            action as the only thing you could press. */}
         <button
           type="button"
-          disabled={!canCopyRight}
-          aria-label="Copy selection to right pane"
-          title="Copy → (F5)"
-          onClick={() => void copySelection('ltr')}
+          className="transfer-action"
+          disabled={!canCopyActive}
+          aria-label={`Copy selection to ${transferDestName}`}
+          title="F5"
+          onClick={() => void copySelection(transferDirection)}
         >
-          <ChevronRight size={16} />
+          {transferDirection === 'rtl' ? <ArrowLeft size={15} /> : null}
+          <span>Copy</span>
+          {transferDirection === 'ltr' ? <ArrowRight size={15} /> : null}
         </button>
         <button
           type="button"
-          disabled={!canCopyLeft}
-          aria-label="Copy selection to left pane"
-          title="← Copy (F5)"
-          onClick={() => void copySelection('rtl')}
+          className="transfer-action"
+          disabled={!canMoveActive}
+          aria-label={`Move selection to ${transferDestName}`}
+          title="F6"
+          onClick={() => void moveSelection(transferDirection)}
         >
-          <ChevronRight size={16} style={{ transform: 'rotate(180deg)' }} />
+          {transferDirection === 'rtl' ? <ArrowLeft size={15} /> : null}
+          <span>Move</span>
+          {transferDirection === 'ltr' ? <ArrowRight size={15} /> : null}
         </button>
-        <button
-          type="button"
-          disabled={!canMoveRight}
-          aria-label="Move selection to right pane"
-          title="Move → (F6)"
-          onClick={() => void moveSelection('ltr')}
-        >
-          <ArrowLeftRight size={14} />
-        </button>
-        <button
-          type="button"
-          disabled={!canMoveLeft}
-          aria-label="Move selection to left pane"
-          title="← Move (F6)"
-          onClick={() => void moveSelection('rtl')}
-        >
-          <ArrowLeftRight size={14} style={{ transform: 'scaleX(-1)' }} />
-        </button>
+        {/* A disabled button cannot tell you why it is disabled. Saying it once
+            here beats greying out five controls silently. */}
+        {transferBlockedReason ? (
+          <p className="transfer-reason">{transferBlockedReason}</p>
+        ) : (
+          <p className="transfer-reason transfer-reason-quiet">to {transferDestName}</p>
+        )}
+        <div className="transfer-strip-divider" role="presentation" />
         <button
           type="button"
           disabled={!canRename}

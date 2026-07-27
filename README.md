@@ -145,29 +145,33 @@ That compiles the Go binary and the frontend, prompts for credentials, and uses
 
 ## Updating without losing settings
 
-**If you installed from `compose.yml`** — the quick start above, and what almost
-everyone should use — set the new version and pull:
+If you have the repository checked out, one command handles it either way:
+
+```bash
+./scripts/update.sh
+```
+
+It detects which stack you are running, backs up first, and verifies the app
+comes back ready. On an image install it looks up the newest published version,
+records it in `.env`, and pulls; on a source install it fast-forwards the
+checkout and rebuilds. Pass a version to pin one exactly:
+`./scripts/update.sh 0.2.0-rc.6`.
+
+Without a checkout — you only downloaded `compose.yml` — do it by hand:
 
 ```bash
 echo "DIRDECK_VERSION=<new version>" > .env
 docker compose pull && docker compose up -d
 ```
 
-Your session, administrator password, favorites, preferences, and transfer
-history live in the Docker volume `dirdeck-data` and are untouched by this. You
-are not signed out, and no new password is printed.
+Either way your session, administrator password, favorites, preferences, and
+transfer history are preserved. You are not signed out and no new password is
+printed.
 
-**If you cloned the repository** and build from source, use the updater instead:
-
-```bash
-./scripts/update.sh
-```
-
-It stops the app briefly, creates a backup, fast-forwards the Git checkout,
-rebuilds the image, recreates the container, and verifies readiness. The source
-stack keeps its state in `liquid-glass-file-manager_app-state`, a different
-volume from the one above — `scripts/update.sh` needs a Git checkout and
-`compose.build.yml`, so it does not work on a `compose.yml`-only install.
+The two stacks keep state in **different** Docker volumes — `dirdeck-data` for
+`compose.yml`, `liquid-glass-file-manager_app-state` for `compose.build.yml` —
+so do not switch between them expecting your settings to follow. `docker compose
+config | grep -A2 '^volumes:'` tells you which one you have.
 
 Never run `docker compose down -v` unless you intentionally want to delete the
 application database. Mounted user files are never stored in the application

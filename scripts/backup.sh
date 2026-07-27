@@ -10,26 +10,17 @@ if [ -d "$docker_desktop_bin" ]; then
   export PATH
 fi
 
-# Source installs combine the build stack with the local host-specific override.
-# The default compose.yml is the standalone image-based stack and must not be
-# merged with an override that targets the source service name.
-COMPOSE_FILES="-f compose.build.yml"
-if [ -f compose.override.yml ]; then
-  COMPOSE_FILES="$COMPOSE_FILES -f compose.override.yml"
-fi
+. "$project_dir/scripts/lib-stack.sh"
+detect_stack
 
 umask 077
 mkdir -p backups
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
-# Read the current name first, then the pre-rename one. Installations created
-# before the DirDeck rename still pin LGFM_DATA_VOLUME, and silently falling
-# through to the default would archive the wrong volume.
-env_value() {
-  sed -n "s/^$1=//p" .env 2>/dev/null | tail -n 1
-}
-state_volume=$(env_value DIRDECK_DATA_VOLUME)
-[ -n "$state_volume" ] || state_volume=$(env_value LGFM_DATA_VOLUME)
-state_volume=${state_volume:-dirdeck-data}
+# Read the current name first, then the pre-rename one, then the default for
+# whichever stack is actually running. Installations created before the DirDeck
+# rename still pin LGFM_DATA_VOLUME, and the two stacks have different defaults,
+# so falling through to a fixed name would archive the wrong volume.
+state_volume=$(state_volume_name)
 
 # `docker run -v name:/state` creates a missing volume instead of failing, which
 # would turn a wrong or misspelled name into a silent, empty "successful" backup.
@@ -45,14 +36,14 @@ state_archive="$project_dir/backups/dirdeck-state-$timestamp.tar.gz"
 config_archive="$project_dir/backups/dirdeck-config-$timestamp.tar.gz"
 
 was_running=false
-if [ -n "$(docker compose $COMPOSE_FILES ps -q file-manager 2>/dev/null)" ]; then
+if [ -n "$(docker compose $COMPOSE_FILES ps -q "$APP_SERVICE" 2>/dev/null)" ]; then
   was_running=true
-  docker compose $COMPOSE_FILES stop file-manager >/dev/null
+  docker compose $COMPOSE_FILES stop "$APP_SERVICE" >/dev/null
 fi
 
 restart_app() {
   if [ "$was_running" = true ]; then
-    docker compose $COMPOSE_FILES start file-manager >/dev/null 2>&1 || true
+    docker compose $COMPOSE_FILES start "$APP_SERVICE" >/dev/null 2>&1 || true
   fi
 }
 trap restart_app EXIT INT TERM
@@ -66,13 +57,22 @@ docker run --rm \
   sh -c 'tar -czf "$1" -C /state . && chmod 600 "$1"' sh \
   "/backup/$(basename "$state_archive")"
 
-LC_ALL=C tar -czf "$config_archive" \
-  .env \
-  compose.override.yml \
-  config/volumes.yaml \
-  secrets/admin_username \
-  secrets/admin_password
-chmod 600 "$config_archive"
+# Only source installs have an override, a volume registry, and bootstrap secret
+# files. An image install has none of them, and listing a missing path makes tar
+# exit non-zero — which used to abort the whole update before it started.
+config_files=""
+for candidate in .env compose.override.yml config/volumes.yaml \
+  secrets/admin_username secrets/admin_password; do
+  [ -e "$candidate" ] && config_files="$config_files $candidate"
+done
+
+if [ -n "$config_files" ]; then
+  # shellcheck disable=SC2086
+  LC_ALL=C tar -czf "$config_archive" $config_files
+  chmod 600 "$config_archive"
+else
+  config_archive="(no configuration files to archive)"
+fi
 
 retention=$(env_value DIRDECK_BACKUP_RETENTION)
 [ -n "$retention" ] || retention=$(env_value LGFM_BACKUP_RETENTION)

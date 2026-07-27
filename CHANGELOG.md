@@ -5,7 +5,25 @@ after the first stable release.
 
 ## Unreleased
 
+### Changed
+
+- **`scripts/update.sh` now works on both stacks and needs no version number.**
+  It detects whether the image stack or the source stack is running, and on the
+  image stack resolves the newest published release itself, records it in
+  `.env`, and pulls. `./scripts/update.sh 0.2.0-rc.6` pins an exact version.
+  Stack detection lives in `scripts/lib-stack.sh` and prefers what is actually
+  running over what happens to be on disk.
+
 ### Fixed
+
+- **`scripts/update.sh` aborted on any install made from `compose.yml`.** It
+  assumed the source stack unconditionally, so its first step — `backup.sh` —
+  tried to archive `compose.override.yml`, `config/volumes.yaml` and the
+  `secrets/` files, none of which an image install has. `tar` exited non-zero,
+  `set -e` stopped the script, and the update never ran. Anyone testing from a
+  Git checkout who followed the README quick start hit this. Had it continued,
+  it would have rebuilt from source and switched the app to the other stack's
+  state volume, making every setting and the administrator password look lost.
 
 - **The documented upgrade path could silently downgrade the application.** The
   README told you to pass `DIRDECK_VERSION` inline. That works once, but

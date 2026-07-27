@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { FolderPlus, X } from 'lucide-react'
+import { useDialogFocus } from './useDialogFocus'
 
 export default function NewFolderModal({
   location,
@@ -16,6 +17,7 @@ export default function NewFolderModal({
 }) {
   const [name, setName] = useState('New folder')
   const inputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useDialogFocus<HTMLFormElement>(onClose, !busy)
 
   useEffect(() => {
     const input = inputRef.current
@@ -24,20 +26,10 @@ export default function NewFolderModal({
     input.select()
   }, [])
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
   return (
     <div className="modal-backdrop modal-backdrop-compact" role="presentation">
       <form
+        ref={dialogRef}
         className="glass rename-dialog"
         role="dialog"
         aria-modal="true"

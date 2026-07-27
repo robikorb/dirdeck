@@ -57,45 +57,23 @@ must not be repeated as open roadmap work:
 - keyboard navigation that follows the pane's current sort order and scrolls the
   selected row into view;
 - CI checks for self-referential CSS custom properties and for breakpoint
-  overrides cancelled by source order.
+  overrides cancelled by source order;
+- valid list/grid selection semantics, roving keyboard focus, an announced
+  active pane, keyboard editor access, and trapped/restored dialog focus;
+- a phone-specific single-pane workspace with a locations drawer, bottom action
+  dock, guided copy/move destination mode, and Inspector bottom sheet;
+- a bounded per-file upload stream and age-gated staging cleanup that preserves
+  concurrent uploads.
 
 ## Open UX findings
 
 From the dual-agent UX review recorded in `.impeccable/critique/`
 (2026-07-27, 21/40). The items above are already closed; these are not.
 
-### Accessibility, before 1.0
-
-- Give the row grid a roving tabindex. Every row, checkbox and pencil is
-  currently a tab stop, so a 17-item folder has 81 of them.
-- Add `role="grid"` to the list table, or stop putting `aria-selected` on plain
-  `<tr>` elements where it is not exposed.
-- Stop nesting real buttons inside `div role="button"` grid tiles.
-- Expose which pane is active programmatically; a 1px focus ring is the only
-  current signal, so a screen-reader user cannot tell which side F5 copies from.
-- Add an Escape handler to the rename dialog, and focus trap and restore to all
-  three dialogs.
-- Add an `h1` and document landmarks.
-- Make the editor reachable from the keyboard.
-
-### Clarity
-
-- Replace the seven unlabeled 28px centre-strip icons with two labeled buttons
-  whose direction follows the active pane, and move rename and delete beside the
-  selection count in the pane footer. On a read-only destination, delete is
-  currently the only enabled control between the panes.
-- Say why an action is unavailable instead of silently disabling it.
-- Name the destination folder in destructive and transfer dialogs, not just the
-  volume. Both panes can currently display the same title.
-- Break up the transfer meta line; drop the `[copy]` log prefix and "free at
-  start" from user-facing copy.
-
 ### Responsive
 
-- Below 1280px the sidebar is capped at 200px and clips the second volume; it
-  should become a horizontal volume switcher.
-- The Inspector becomes a full-bleed fixed overlay at those widths; cap it and
-  add a scrim.
+- Validate the new one-pane phone workflow on iOS Safari and Android Chrome,
+  including safe-area insets, software keyboard behavior, and long filenames.
 
 ## Public launch gate
 
@@ -142,24 +120,7 @@ similar communities.
 - Test clean install, upgrade, rollback, state persistence, and mounted-volume
   visibility using the published image rather than the local source tree.
 
-### 4. Add browser upload
-
-The first implementation should be intentionally narrow and safe:
-
-- multi-file and drag-and-drop upload into the active pane;
-- streaming request handling with no whole-file buffering;
-- unmistakable temporary names followed by atomic final rename;
-- skip, replace, rename, and apply-to-all conflict handling;
-- progress and cancellation integrated into the existing transfer UI;
-- server-side filename, path, free-space, read-only, and size checks;
-- cleanup of abandoned partial uploads;
-- tests for disconnects, duplicate names, zero-byte files, large files,
-  read-only volumes, and hostile filenames.
-
-Folder upload and resumable chunk upload can follow after ordinary upload is
-stable.
-
-### 5. Add scoped filename search
+### 4. Add scoped filename search
 
 The first search release should search names, not file contents:
 
@@ -173,7 +134,7 @@ The first search release should search names, not file contents:
 Content indexing and OCR are separate future features and should not delay the
 initial search release.
 
-### 6. Make reverse-proxy behavior safe
+### 5. Make reverse-proxy behavior safe
 
 - Add an explicit trusted-proxy CIDR configuration.
 - Honor `Forwarded` or `X-Forwarded-For` only when the direct peer is trusted.

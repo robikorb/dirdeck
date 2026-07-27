@@ -44,6 +44,8 @@ services:
       DIRDECK_LOGIN_RATE_LIMIT_MAX: "${DIRDECK_LOGIN_RATE_LIMIT_MAX:-${LGFM_LOGIN_RATE_LIMIT_MAX:-10}}"
       DIRDECK_LOGIN_RATE_LIMIT_SEC: "${DIRDECK_LOGIN_RATE_LIMIT_SEC:-${LGFM_LOGIN_RATE_LIMIT_SEC:-60}}"
       DIRDECK_SESSION_TTL_HOURS: "${DIRDECK_SESSION_TTL_HOURS:-${LGFM_SESSION_TTL_HOURS:-12}}"
+      # Per-file streaming limit in bytes. The default is 1 TiB.
+      DIRDECK_MAX_UPLOAD_BYTES: "${DIRDECK_MAX_UPLOAD_BYTES:-${LGFM_MAX_UPLOAD_BYTES:-1099511627776}}"
 
       # Ownership for anything DirDeck creates. On Linux use `id -u` / `id -g`.
       PUID: "${PUID:-1000}"

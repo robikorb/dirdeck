@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AlertTriangle, Trash2, X } from 'lucide-react'
+import { useDialogFocus } from './useDialogFocus'
 
 export default function DeleteModal({
   names,
@@ -19,19 +20,16 @@ export default function DeleteModal({
   const itemCount = names.length
   const itemLabel = itemCount === 1 ? names[0] : `${itemCount} selected items`
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useDialogFocus<HTMLElement>(onClose, !busy)
 
   useEffect(() => {
     cancelRef.current?.focus()
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !busy) onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [busy, onClose])
+  }, [])
 
   return (
     <div className="modal-backdrop modal-backdrop-compact" role="presentation">
       <section
+        ref={dialogRef}
         className="glass delete-dialog"
         role="alertdialog"
         aria-modal="true"

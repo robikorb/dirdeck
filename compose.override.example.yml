@@ -1,5 +1,7 @@
-# Copy this file to compose.override.yml. Docker Compose loads it
-# automatically. Keep host-specific mounts here so compose.yml remains
+# Source-build override only. Copy this file to compose.override.yml and run
+# `docker compose -f compose.build.yml -f compose.override.yml up -d --build`.
+# The normal image-based compose.yml uses a different service name and does not
+# load this file. Keep host-specific mounts here so source checkouts remain
 # upgradeable from Git.
 services:
   file-manager:

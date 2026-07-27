@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 
 	appfs "github.com/robikorb/dirdeck/backend/internal/fs"
 )
@@ -18,9 +19,10 @@ const (
 	uploadConflictRename  = "rename"
 )
 
-// maxUploadBytes bounds a single uploaded file. Zero disables the limit; free
-// space is checked separately and is the more useful guard on a NAS.
-const maxUploadBytes int64 = 0
+const (
+	defaultMaxUploadBytes = int64(1 << 40) // 1 TiB, configurable by the operator.
+	uploadStagingMaxAge   = 24 * time.Hour
+)
 
 type uploadResponse struct {
 	Skipped  bool        `json:"skipped"`
@@ -115,22 +117,38 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Reject before writing when the declared size cannot fit.
+	maxUploadBytes := s.MaxUploadBytes
+	if maxUploadBytes <= 0 {
+		maxUploadBytes = defaultMaxUploadBytes
+	}
+
+	// Reject before writing when the declared size cannot fit. Unknown-length
+	// bodies are still bounded by both the configured limit and the free space
+	// observed at the start of the request.
 	declared := r.ContentLength
-	if declared > 0 {
-		if avail, known, ferr := s.FS.FreeSpace(volumeID); ferr == nil && known && declared > avail {
+	streamLimit := maxUploadBytes
+	if avail, known, ferr := s.FS.FreeSpace(volumeID); ferr == nil && known {
+		if avail <= 0 {
+			writeError(w, http.StatusInsufficientStorage, "destination has no free space")
+			return
+		}
+		if declared > 0 && declared > avail {
 			writeError(w, http.StatusInsufficientStorage,
 				fmt.Sprintf("need %d bytes, only %d bytes available", declared, avail))
 			return
 		}
+		if avail < streamLimit {
+			streamLimit = avail
+		}
 	}
 
-	// Collect staging files left by a previously killed process.
-	s.FS.SweepUploadStaging(volumeID, destDir)
+	// Collect only genuinely abandoned files. Another tab may upload into the
+	// same folder, so sweeping every staging name would delete a live request.
+	s.FS.SweepUploadStaging(volumeID, destDir, uploadStagingMaxAge)
 
 	meta, err := s.FS.SaveUpload(
 		r.Context(), volumeID, destDir, finalName,
-		r.Body, declared, maxUploadBytes, replace,
+		r.Body, declared, streamLimit, replace,
 	)
 	if err != nil {
 		writeUploadError(w, err)

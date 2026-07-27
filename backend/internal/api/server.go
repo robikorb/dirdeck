@@ -23,14 +23,15 @@ import (
 
 // Server wires HTTP routes.
 type Server struct {
-	Auth      *auth.Service
-	FS        *appfs.Service
-	Volumes   *volumes.Registry
-	Transfers *transfer.Manager
-	Preview   *preview.Service
-	Prefs     *prefs.Store
-	Static    fs.FS
-	Ready     bool
+	Auth           *auth.Service
+	FS             *appfs.Service
+	Volumes        *volumes.Registry
+	Transfers      *transfer.Manager
+	Preview        *preview.Service
+	Prefs          *prefs.Store
+	Static         fs.FS
+	Ready          bool
+	MaxUploadBytes int64
 
 	shutdownMu sync.Mutex
 	shutdownCh chan struct{}

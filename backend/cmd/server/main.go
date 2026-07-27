@@ -73,14 +73,15 @@ func main() {
 	}
 
 	srv := &api.Server{
-		Auth:      authSvc,
-		FS:        fsSvc,
-		Volumes:   reg,
-		Transfers: xfer,
-		Preview:   previewSvc,
-		Prefs:     prefsStore,
-		Static:    staticFS,
-		Ready:     true,
+		Auth:           authSvc,
+		FS:             fsSvc,
+		Volumes:        reg,
+		Transfers:      xfer,
+		Preview:        previewSvc,
+		Prefs:          prefsStore,
+		Static:         staticFS,
+		Ready:          true,
+		MaxUploadBytes: cfg.MaxUploadBytes,
 	}
 
 	httpSrv := &http.Server{
@@ -90,9 +91,9 @@ func main() {
 		// No overall read deadline: uploads stream arbitrarily large bodies and a
 		// fixed limit would kill them mid-transfer. ReadHeaderTimeout still bounds
 		// slow-header attacks.
-		ReadTimeout:       0,
-		WriteTimeout:      0, // streaming downloads + SSE
-		IdleTimeout:       120 * time.Second,
+		ReadTimeout:  0,
+		WriteTimeout: 0, // streaming downloads + SSE
+		IdleTimeout:  120 * time.Second,
 	}
 	errCh := make(chan error, 1)
 	go func() {

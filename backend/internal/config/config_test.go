@@ -7,6 +7,7 @@ func TestLoadAuthPolicyFromEnvironment(t *testing.T) {
 	t.Setenv("DIRDECK_LOGIN_RATE_LIMIT_MAX", "17")
 	t.Setenv("DIRDECK_LOGIN_RATE_LIMIT_SEC", "90")
 	t.Setenv("DIRDECK_SESSION_TTL_HOURS", "24")
+	t.Setenv("DIRDECK_MAX_UPLOAD_BYTES", "5368709120")
 
 	cfg, err := Load()
 	if err != nil {
@@ -15,6 +16,9 @@ func TestLoadAuthPolicyFromEnvironment(t *testing.T) {
 	if cfg.LoginRateLimitMax != 17 || cfg.LoginRateLimitSec != 90 || cfg.SessionTTLHours != 24 {
 		t.Fatalf("unexpected auth policy: %+v", cfg)
 	}
+	if cfg.MaxUploadBytes != 5368709120 {
+		t.Fatalf("unexpected upload limit: %d", cfg.MaxUploadBytes)
+	}
 }
 
 func TestLoadAuthPolicyRejectsInvalidValues(t *testing.T) {
@@ -22,6 +26,7 @@ func TestLoadAuthPolicyRejectsInvalidValues(t *testing.T) {
 	t.Setenv("DIRDECK_LOGIN_RATE_LIMIT_MAX", "0")
 	t.Setenv("DIRDECK_LOGIN_RATE_LIMIT_SEC", "invalid")
 	t.Setenv("DIRDECK_SESSION_TTL_HOURS", "-1")
+	t.Setenv("DIRDECK_MAX_UPLOAD_BYTES", "invalid")
 
 	cfg, err := Load()
 	if err != nil {
@@ -29,6 +34,9 @@ func TestLoadAuthPolicyRejectsInvalidValues(t *testing.T) {
 	}
 	if cfg.LoginRateLimitMax != 10 || cfg.LoginRateLimitSec != 60 || cfg.SessionTTLHours != 12 {
 		t.Fatalf("invalid values did not fall back: %+v", cfg)
+	}
+	if cfg.MaxUploadBytes != 1<<40 {
+		t.Fatalf("invalid upload limit did not fall back: %d", cfg.MaxUploadBytes)
 	}
 }
 

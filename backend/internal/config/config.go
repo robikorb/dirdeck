@@ -29,6 +29,7 @@ type Config struct {
 	LoginRateLimitMax int
 	LoginRateLimitSec int
 	SessionTTLHours   int
+	MaxUploadBytes    int64
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -50,6 +51,7 @@ func Load() (Config, error) {
 		LoginRateLimitMax: envIntOr("LOGIN_RATE_LIMIT_MAX", 10),
 		LoginRateLimitSec: envIntOr("LOGIN_RATE_LIMIT_SEC", 60),
 		SessionTTLHours:   envIntOr("SESSION_TTL_HOURS", 12),
+		MaxUploadBytes:    envInt64Or("MAX_UPLOAD_BYTES", 1<<40),
 	}
 	if err := os.MkdirAll(cfg.DataDir, 0o750); err != nil {
 		return Config{}, fmt.Errorf("create data dir: %w", err)
@@ -91,6 +93,18 @@ func envIntOr(name string, fallback int) int {
 		return fallback
 	}
 	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		return fallback
+	}
+	return value
+}
+
+func envInt64Or(name string, fallback int64) int64 {
+	raw, ok := lookupEnv(name)
+	if !ok {
+		return fallback
+	}
+	value, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || value <= 0 {
 		return fallback
 	}

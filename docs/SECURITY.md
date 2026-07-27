@@ -143,7 +143,11 @@ Uploads are untrusted input arriving under a client-chosen name.
   than overwritten. `RENAME_NOREPLACE` is used so a concurrent create cannot be
   clobbered.
 - Declared sizes are checked against free space before writing.
-- Abandoned staging files are swept when the destination folder is next used.
+- Declared and chunked bodies are bounded by `DIRDECK_MAX_UPLOAD_BYTES` (1 TiB
+  by default), and the stream stops with `413` if the limit is crossed.
+- Abandoned staging files older than 24 hours are swept when the destination
+  folder is next used. Fresh staging files are preserved for concurrent
+  uploads.
 - Folder upload creates directories one validated component at a time through
   the same resolver as `mkdir`. A `dir` containing `..`, an absolute path, or a
   traversal sequence is rejected before anything is created.

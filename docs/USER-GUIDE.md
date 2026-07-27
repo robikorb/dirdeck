@@ -156,6 +156,9 @@ already uploaded stays. Dropping the same folder again with **keep both** or
 Resumable upload is not implemented — a cancelled file restarts from the
 beginning rather than continuing.
 
+The server also enforces a per-file upload ceiling. It is 1 TiB by default and
+operators can change it with `DIRDECK_MAX_UPLOAD_BYTES`.
+
 ## Editor
 
 Click the pencil action on a supported text or code file to open the Monaco

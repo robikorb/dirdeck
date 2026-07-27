@@ -23,6 +23,7 @@ import {
   Link2,
   List,
   LogOut,
+  Menu,
   Monitor,
   Moon,
   PanelRightClose,
@@ -130,6 +131,7 @@ function sortEntries(entries: DirEntry[], key: SortKey, dir: SortDir): DirEntry[
 const defaultDirFor = (key: SortKey): SortDir => (key === 'name' ? 'asc' : 'desc')
 type Density = 'compact' | 'comfortable'
 type ThemeChoice = 'system' | 'light' | 'dark'
+type MobileTransferMode = { kind: 'copy' | 'move'; source: ActivePane } | null
 
 /** Single source of truth for row height. CSS reads it from --list-row-height,
  *  virtualization reads the same number, so density cannot desynchronise them. */
@@ -483,7 +485,11 @@ function Pane({
     }
   }, [contextMenu])
 
-  function selectEntry(entry: DirEntry, event?: React.MouseEvent, forceToggle = false) {
+  function selectEntry(
+    entry: DirEntry,
+    event?: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean },
+    forceToggle = false,
+  ) {
     const toggle = forceToggle || Boolean(event?.metaKey || event?.ctrlKey)
     const extend = Boolean(event?.shiftKey)
     let nextPaths: string[]
@@ -817,8 +823,9 @@ function Pane({
   return (
     <section
       className={`glass pane ${active ? 'pane-active' : ''}`}
-      aria-label={label}
+      aria-label={`${label}${active ? ', active' : ''}`}
       data-pane={paneId}
+      data-active={active ? 'true' : 'false'}
       tabIndex={0}
       onMouseDown={onActivate}
       onFocus={onActivate}
@@ -1022,7 +1029,7 @@ function Pane({
           </div>
         ) : null}
         {!state.loading && !state.error && state.view === 'list' ? (
-          <table className="list-table">
+          <table className="list-table" role="grid" aria-multiselectable="true">
             <thead>
               <tr>
                 <th className="entry-select-heading" aria-label="Selection" />
@@ -1073,14 +1080,26 @@ function Pane({
                 <tr
                   key={entry.path}
                   className={state.selectedPaths.includes(entry.path) ? 'selected' : ''}
-                  tabIndex={0}
+                  tabIndex={entry.path === (state.selected ?? entries[0]?.path) ? 0 : -1}
                   aria-selected={state.selectedPaths.includes(entry.path)}
                   onClick={(event) => handleEntryClick(entry, event)}
                   onContextMenu={(event) => openContextMenu(entry, event)}
+                  onFocus={(event) => {
+                    if (event.currentTarget === event.target && state.selected !== entry.path) {
+                      onActivate()
+                      selectEntry(entry)
+                    }
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && entry.isDir) {
                       event.preventDefault()
                       activateEntry(entry)
+                    } else if (event.key === ' ') {
+                      event.preventDefault()
+                      selectEntry(entry, event, true)
+                    } else if ((event.key === 'e' || event.key === 'E') && !entry.isDir && isEditablePath(entry.path)) {
+                      event.preventDefault()
+                      editEntry(entry, event)
                     }
                   }}
                 >
@@ -1088,6 +1107,7 @@ function Pane({
                     <button
                       type="button"
                       className="entry-select-button"
+                      tabIndex={-1}
                       aria-label={`${state.selectedPaths.includes(entry.path) ? 'Deselect' : 'Select'} ${entry.name}`}
                       aria-pressed={state.selectedPaths.includes(entry.path)}
                       title="Select item (Shift-click for a range)"
@@ -1112,6 +1132,7 @@ function Pane({
                       <button
                         type="button"
                         className="entry-edit-button"
+                        tabIndex={-1}
                         aria-label={`Edit ${entry.name}`}
                         title="Open in editor"
                         onClick={(event) => editEntry(entry, event)}
@@ -1137,6 +1158,9 @@ function Pane({
         {!state.loading && !state.error && state.view === 'grid' ? (
           <div
             className="grid-virtual"
+            role="listbox"
+            aria-multiselectable="true"
+            aria-label={`${label} items`}
             style={{ height: Math.max(0, gridRows * GRID_ROW_HEIGHT - GRID_GAP) }}
           >
             <div
@@ -1147,11 +1171,17 @@ function Pane({
                 <div
                   key={entry.path}
                   className={`grid-item ${state.selectedPaths.includes(entry.path) ? 'selected' : ''}`}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={state.selectedPaths.includes(entry.path)}
+                  role="option"
+                  tabIndex={entry.path === (state.selected ?? entries[0]?.path) ? 0 : -1}
+                  aria-selected={state.selectedPaths.includes(entry.path)}
                   onClick={(event) => handleEntryClick(entry, event)}
                   onContextMenu={(event) => openContextMenu(entry, event)}
+                  onFocus={(event) => {
+                    if (event.currentTarget === event.target && state.selected !== entry.path) {
+                      onActivate()
+                      selectEntry(entry)
+                    }
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && entry.isDir) {
                       event.preventDefault()
@@ -1165,6 +1195,7 @@ function Pane({
                   <button
                     type="button"
                     className="entry-select-button grid-select-button"
+                    tabIndex={-1}
                     aria-label={`${state.selectedPaths.includes(entry.path) ? 'Deselect' : 'Select'} ${entry.name}`}
                     aria-pressed={state.selectedPaths.includes(entry.path)}
                     title="Select item (Shift-click for a range)"
@@ -1181,6 +1212,7 @@ function Pane({
                     <button
                       type="button"
                       className="entry-edit-button grid-edit-button"
+                      tabIndex={-1}
                       aria-label={`Edit ${entry.name}`}
                       title="Open in editor"
                       onClick={(event) => editEntry(entry, event)}
@@ -1251,7 +1283,7 @@ function Pane({
                 <span className="upload-bar">
                   <span
                     className="upload-bar-fill"
-                    style={{ width: `${u.total ? Math.round((u.loaded / u.total) * 100) : 0}%` }}
+                    style={{ transform: `scaleX(${u.total ? Math.min(1, u.loaded / u.total) : 0})` }}
                   />
                 </span>
               ) : null}
@@ -1461,7 +1493,8 @@ function TransferPanel({
             <li key={job.id}>
               <div className="transfer-row">
                 <span className="transfer-name" title={job.sourcePaths?.join('\n') || job.sourcePath}>
-                  [{job.kind}] {label}
+                  <strong className="transfer-kind">{job.kind === 'move' ? 'Move' : 'Copy'}</strong>
+                  <span>{label}</span>
                 </span>
                 <span className="muted">{job.status}</span>
                 {['queued', 'running', 'conflict', 'cancelling'].includes(job.status) ? (
@@ -1477,17 +1510,15 @@ function TransferPanel({
               </div>
               {job.status === 'running' || job.status === 'queued' ? (
                 <div className="transfer-progress" role="progressbar" aria-valuenow={pct}>
-                  <div style={{ width: `${pct}%` }} />
+                  <div style={{ transform: `scaleX(${pct / 100})` }} />
                 </div>
               ) : null}
               <div className="transfer-meta muted">
-                {formatSize(job.bytesDone)} / {formatSize(job.bytesTotal)} · {formatSpeed(job.bytesPerSecond)}
-                {` · ${job.filesDone}/${job.filesTotal} files`}
-                {job.currentPath ? ` · ${job.currentPath}` : ''}
-                {job.freeSpaceKnown && job.freeSpaceBytes != null
-                  ? ` · ${formatSize(job.freeSpaceBytes)} free at start`
-                  : ' · free space unknown'}
-                {job.errorMessage ? ` · ${job.errorMessage}` : ''}
+                <span>{formatSize(job.bytesDone)} / {formatSize(job.bytesTotal)}</span>
+                <span>{formatSpeed(job.bytesPerSecond)}</span>
+                <span>{job.filesDone}/{job.filesTotal} files</span>
+                {job.currentPath ? <span title={job.currentPath}>{job.currentPath}</span> : null}
+                {job.errorMessage ? <span className="login-error">{job.errorMessage}</span> : null}
               </div>
               {job.status === 'conflict' ? (
                 <div className="conflict-actions">
@@ -1530,6 +1561,9 @@ export default function App() {
   const [meta, setMeta] = useState<FileMeta | null>(null)
   const [metaVolumeId, setMetaVolumeId] = useState('')
   const [activePane, setActivePane] = useState<ActivePane>('left')
+  const [mobileLocationsOpen, setMobileLocationsOpen] = useState(false)
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false)
+  const [mobileTransfer, setMobileTransfer] = useState<MobileTransferMode>(null)
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     volumes: true,
     favorites: true,
@@ -1745,7 +1779,14 @@ export default function App() {
       setRecents([])
     }
     try {
-      setJobs(await listTransfers())
+      const initialJobs = await listTransfers()
+      // Initial history is context, not a fresh event. Seed the terminal IDs
+      // before the SSE endpoint replays its snapshot, otherwise every login
+      // announces an old completed copy as if it had just finished.
+      announcedJobs.current = new Set(
+        initialJobs.filter((job) => TERMINAL_STATUSES.has(job.status)).map((job) => job.id),
+      )
+      setJobs(initialJobs)
     } catch {
       setJobs([])
     }
@@ -2093,7 +2134,7 @@ export default function App() {
     }
   }, [meta, metaVolumeId])
 
-  async function transferSelection(direction: 'ltr' | 'rtl', kind: 'copy' | 'move') {
+  async function transferSelection(direction: 'ltr' | 'rtl', kind: 'copy' | 'move'): Promise<boolean> {
     setCopyError(null)
     const src = direction === 'ltr' ? left : right
     const dst = direction === 'ltr' ? right : left
@@ -2101,20 +2142,20 @@ export default function App() {
     const dstVol = volumes.find((v) => v.id === dst.volumeId)
     if (src.selectedPaths.length === 0 || !src.volumeId || !dst.volumeId) {
       setCopyError(`Select one or more items to ${kind}`)
-      return
+      return false
     }
     if (dstVol?.readOnly) {
       setCopyError('Destination volume is read-only')
-      return
+      return false
     }
     if (kind === 'move' && srcVol?.readOnly) {
       setCopyError('Source volume is read-only; cannot move')
-      return
+      return false
     }
     const selectedEntries = src.entries.filter((entry) => src.selectedPaths.includes(entry.path))
     if (selectedEntries.length !== src.selectedPaths.length || selectedEntries.some((entry) => entry.isSymlink)) {
       setCopyError(`Cannot ${kind} a selection containing symbolic links`)
-      return
+      return false
     }
     setBusyTransfer(true)
     try {
@@ -2135,8 +2176,10 @@ export default function App() {
       })
       if (direction === 'ltr') setLeft(clearSelection)
       else setRight(clearSelection)
+      return true
     } catch (err) {
       setCopyError(err instanceof Error ? err.message : `${kind} failed`)
+      return false
     } finally {
       setBusyTransfer(false)
     }
@@ -2148,6 +2191,28 @@ export default function App() {
 
   async function moveSelection(direction: 'ltr' | 'rtl') {
     await transferSelection(direction, 'move')
+  }
+
+  function beginMobileTransfer(kind: 'copy' | 'move') {
+    const source = activePane
+    const sourceState = source === 'left' ? left : right
+    if (sourceState.selectedPaths.length === 0 || busyTransfer) return
+    setMobileTransfer({ kind, source })
+    setActivePane(source === 'left' ? 'right' : 'left')
+    setMobileInspectorOpen(false)
+    setMobileLocationsOpen(false)
+  }
+
+  function cancelMobileTransfer() {
+    if (mobileTransfer) setActivePane(mobileTransfer.source)
+    setMobileTransfer(null)
+  }
+
+  async function confirmMobileTransfer() {
+    if (!mobileTransfer) return
+    const direction = mobileTransfer.source === 'left' ? 'ltr' : 'rtl'
+    const completed = await transferSelection(direction, mobileTransfer.kind)
+    if (completed) setMobileTransfer(null)
   }
 
   const activeState = activePane === 'left' ? left : right
@@ -2171,6 +2236,21 @@ export default function App() {
         return
       }
       if (editorDocument || renameTarget || deleteTarget || newFolderPane) return
+      if (e.key === 'Escape' && mobileLocationsOpen) {
+        e.preventDefault()
+        setMobileLocationsOpen(false)
+        return
+      }
+      if (e.key === 'Escape' && mobileInspectorOpen) {
+        e.preventDefault()
+        setMobileInspectorOpen(false)
+        return
+      }
+      if (e.key === 'Escape' && mobileTransfer) {
+        e.preventDefault()
+        cancelMobileTransfer()
+        return
+      }
       const pane = activePane === 'left' ? left : right
       const setPane = activePane === 'left' ? setLeft : setRight
       // Keyboard navigation must walk the order the user is looking at, not the
@@ -2343,12 +2423,19 @@ export default function App() {
     activeSelectionCount === 1 && activeEntry && !activeEntry.isSymlink && !activeVolume?.readOnly,
   )
   const canDelete = Boolean(activeSelectionCount > 0 && !activeVolume?.readOnly)
+  const canBeginMobileCopy = Boolean(activeSelectionCount > 0 && !busyTransfer)
+  const canBeginMobileMove = Boolean(
+    activeSelectionCount > 0 && !activeVolume?.readOnly && !busyTransfer,
+  )
 
   // Transfers run away from the active pane, so the strip's two buttons point
   // wherever the user is standing rather than offering both directions at once.
   const transferDirection: 'ltr' | 'rtl' = activePane === 'left' ? 'ltr' : 'rtl'
   const transferDestVol = transferDirection === 'ltr' ? rightVol : leftVol
-  const transferDestName = transferDestVol?.name || 'the other pane'
+  const transferDestState = transferDirection === 'ltr' ? right : left
+  const transferDestName = transferDestVol
+    ? `${transferDestVol.name}${transferDestState.path ? ` / ${transferDestState.path}` : ' /'}`
+    : 'the other pane'
   const canCopyActive = transferDirection === 'ltr' ? canCopyRight : canCopyLeft
   const canMoveActive = transferDirection === 'ltr' ? canMoveRight : canMoveLeft
 
@@ -2365,6 +2452,22 @@ export default function App() {
   const activeCount = jobs.filter((j) =>
     ['queued', 'running', 'cancelling', 'conflict'].includes(j.status),
   ).length
+  const mobileTransferSourceState = mobileTransfer
+    ? mobileTransfer.source === 'left' ? left : right
+    : null
+  const mobileDestinationState = mobileTransfer
+    ? mobileTransfer.source === 'left' ? right : left
+    : null
+  const mobileDestinationVolume = mobileDestinationState
+    ? volumes.find((volume) => volume.id === mobileDestinationState.volumeId)
+    : null
+  const canConfirmMobileTransfer = Boolean(
+    mobileTransferSourceState?.selectedPaths.length &&
+    mobileDestinationState?.volumeId &&
+    mobileDestinationVolume?.available &&
+    !mobileDestinationVolume?.readOnly &&
+    !busyTransfer,
+  )
 
   const showImagePreview =
     meta &&
@@ -2389,7 +2492,13 @@ export default function App() {
 
   return (
     <>
-    <div className={`app-shell${inspectorOpen ? '' : ' inspector-collapsed'}`}>
+    <main
+      className={[
+        'app-shell',
+        inspectorOpen ? '' : 'inspector-collapsed',
+        mobileTransfer ? 'mobile-destination-mode' : '',
+      ].filter(Boolean).join(' ')}
+    >
       {/* Both regions are always mounted: a live region inserted at the same
           moment as its content is not reliably announced. Errors are assertive
           and stay until dismissed; everything else is polite and self-clears. */}
@@ -2406,10 +2515,56 @@ export default function App() {
         </div>
       </div>
 
-      <aside className="glass side-panel" aria-label="Locations">
+      <header className="mobile-topbar">
+        <button
+          type="button"
+          className="mobile-icon-button"
+          aria-label="Open locations"
+          aria-expanded={mobileLocationsOpen}
+          onClick={() => setMobileLocationsOpen(true)}
+        >
+          <Menu size={20} />
+        </button>
+        <div className="mobile-location-title">
+          <strong>{mobileTransfer ? 'Choose destination' : (activeVolume?.name || 'DirDeck')}</strong>
+          <span>
+            {mobileTransfer
+              ? `${mobileDestinationVolume?.name || 'Select a volume'}${mobileDestinationState?.path ? ` / ${mobileDestinationState.path}` : ' /'}`
+              : (activeState.path || 'Volume root')}
+          </span>
+        </div>
+        <button
+          type="button"
+          className={`mobile-icon-button${activeCount ? ' has-activity' : ''}`}
+          aria-label={activeCount ? `Open details, ${activeCount} active transfers` : 'Open details'}
+          onClick={() => setMobileInspectorOpen(true)}
+        >
+          <PanelRightOpen size={20} />
+          {activeCount ? <span className="mobile-activity-dot">{activeCount}</span> : null}
+        </button>
+      </header>
+
+      {mobileLocationsOpen ? (
+        <button
+          type="button"
+          className="mobile-overlay-scrim mobile-nav-scrim"
+          aria-label="Close locations"
+          onClick={() => setMobileLocationsOpen(false)}
+        />
+      ) : null}
+
+      <aside className={`glass side-panel${mobileLocationsOpen ? ' mobile-open' : ''}`} aria-label="Locations">
         <div className="side-brand">
           <img src="/app-icon.svg" alt="" aria-hidden />
-          <span>DirDeck</span>
+          <h1>DirDeck</h1>
+          <button
+            type="button"
+            className="icon-btn mobile-close-nav"
+            aria-label="Close locations"
+            onClick={() => setMobileLocationsOpen(false)}
+          >
+            <X size={18} />
+          </button>
         </div>
 
         <div className="side-sections">
@@ -2441,7 +2596,10 @@ export default function App() {
                     <button
                       type="button"
                       className={left.volumeId === v.id || right.volumeId === v.id ? 'active' : ''}
-                      onClick={() => selectVolume(v.id)}
+                      onClick={() => {
+                        selectVolume(v.id)
+                        setMobileLocationsOpen(false)
+                      }}
                     >
                       <HardDrive size={14} />
                       <span className="side-label">
@@ -2491,7 +2649,13 @@ export default function App() {
               <ul className="side-list">
                 {favorites.map((f) => (
                   <li key={f.id}>
-                    <button type="button" onClick={() => navigatePane(activePane, f.volumeId, f.path)}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigatePane(activePane, f.volumeId, f.path)
+                        setMobileLocationsOpen(false)
+                      }}
+                    >
                       <Star size={14} />
                       <span className="side-label">{f.label || f.path || f.volumeId}</span>
                     </button>
@@ -2530,7 +2694,13 @@ export default function App() {
               <ul className="side-list">
                 {recents.map((r) => (
                   <li key={`${r.volumeId}:${r.path}`}>
-                    <button type="button" onClick={() => navigatePane(activePane, r.volumeId, r.path)}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigatePane(activePane, r.volumeId, r.path)
+                        setMobileLocationsOpen(false)
+                      }}
+                    >
                       <Clock size={14} />
                       <span className="side-label">
                         {volumes.find((v) => v.id === r.volumeId)?.name ?? r.volumeId}
@@ -2735,15 +2905,101 @@ export default function App() {
         onDeleteSelection={openDelete}
       />
 
-      {inspectorOpen ? (
-        <aside className="glass inspector" aria-label="Inspector">
+      <nav className="mobile-action-dock" aria-label="File actions">
+        {mobileTransfer ? (
+          <>
+            <button type="button" className="mobile-action" onClick={cancelMobileTransfer}>
+              <X size={19} />
+              <span>Cancel</span>
+            </button>
+            <div className="mobile-destination-summary">
+              <span>{mobileTransferSourceState?.selectedPaths.length || 0} selected</span>
+              <strong>{mobileDestinationVolume?.name || 'No destination'}</strong>
+              <small>{mobileDestinationState?.path || 'Volume root'}</small>
+            </div>
+            <button
+              type="button"
+              className="mobile-confirm-transfer"
+              disabled={!canConfirmMobileTransfer}
+              onClick={() => void confirmMobileTransfer()}
+            >
+              {mobileTransfer.kind === 'move' ? 'Move here' : 'Copy here'}
+              <CheckCircle2 size={19} />
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="mobile-action" onClick={() => setMobileLocationsOpen(true)}>
+              <HardDrive size={19} />
+              <span>Locations</span>
+            </button>
+            <button
+              type="button"
+              className="mobile-action"
+              disabled={!canBeginMobileCopy}
+              onClick={() => beginMobileTransfer('copy')}
+            >
+              <ArrowLeftRight size={19} />
+              <span>Copy</span>
+            </button>
+            <button
+              type="button"
+              className="mobile-action"
+              disabled={!canBeginMobileMove}
+              onClick={() => beginMobileTransfer('move')}
+            >
+              <ArrowRight size={19} />
+              <span>Move</span>
+            </button>
+            <button type="button" className="mobile-action" disabled={!canRename} onClick={openRename}>
+              <Pencil size={19} />
+              <span>Rename</span>
+            </button>
+            <button
+              type="button"
+              className="mobile-action mobile-action-danger"
+              disabled={!canDelete}
+              onClick={openDelete}
+            >
+              <Trash2 size={19} />
+              <span>Delete</span>
+            </button>
+            <button
+              type="button"
+              className="mobile-action"
+              onClick={() => setMobileInspectorOpen(true)}
+            >
+              <PanelRightOpen size={19} />
+              <span>Details</span>
+            </button>
+          </>
+        )}
+      </nav>
+
+      {mobileInspectorOpen ? (
+        <button
+          type="button"
+          className="mobile-overlay-scrim inspector-scrim"
+          aria-label="Close details"
+          onClick={() => setMobileInspectorOpen(false)}
+        />
+      ) : null}
+
+      {inspectorOpen || mobileInspectorOpen ? (
+        <aside
+          className={`glass inspector${mobileInspectorOpen ? ' mobile-sheet-open' : ''}`}
+          aria-label="Inspector"
+        >
           <div className="inspector-header">
             <h3>Inspector</h3>
             <button
               type="button"
               className="icon-btn"
               aria-label="Close inspector"
-              onClick={() => setInspectorOpen(false)}
+              onClick={() => {
+                setInspectorOpen(false)
+                setMobileInspectorOpen(false)
+              }}
             >
               <PanelRightClose size={16} />
             </button>
@@ -2857,7 +3113,7 @@ export default function App() {
           </button>
         </div>
       )}
-    </div>
+    </main>
       {newFolderPane ? (
         <NewFolderModal
           location={(newFolderPane === 'left' ? left : right).path}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pencil, X } from 'lucide-react'
+import { useDialogFocus } from './useDialogFocus'
 
 export default function RenameModal({
   currentName,
@@ -16,6 +17,7 @@ export default function RenameModal({
 }) {
   const [name, setName] = useState(currentName)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useDialogFocus<HTMLFormElement>(onClose, !busy)
 
   useEffect(() => {
     const input = inputRef.current
@@ -28,6 +30,7 @@ export default function RenameModal({
   return (
     <div className="modal-backdrop modal-backdrop-compact" role="presentation">
       <form
+        ref={dialogRef}
         className="glass rename-dialog"
         role="dialog"
         aria-modal="true"

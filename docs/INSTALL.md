@@ -148,6 +148,7 @@ Edit `.env`:
 | `DIRDECK_LOGIN_RATE_LIMIT_MAX` | `10` | Failed attempts allowed per client/window |
 | `DIRDECK_LOGIN_RATE_LIMIT_SEC` | `60` | Login rate-limit window in seconds |
 | `DIRDECK_SESSION_TTL_HOURS` | `12` | Browser session lifetime |
+| `DIRDECK_MAX_UPLOAD_BYTES` | `1099511627776` | Maximum size of one streamed upload in bytes (1 TiB) |
 | `DIRDECK_BACKUP_RETENTION` | `10` | State/config backup pairs retained; `0` keeps all |
 
 Linux operators should normally use the UID and GID that own the writable bind

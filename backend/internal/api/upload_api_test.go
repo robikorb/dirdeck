@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/robikorb/dirdeck/backend/internal/api"
 	"github.com/robikorb/dirdeck/backend/internal/auth"
@@ -22,6 +23,7 @@ import (
 
 type uploadFixture struct {
 	handler http.Handler
+	server  *api.Server
 	ro, rw  string
 	cookies []*http.Cookie
 	csrf    string
@@ -87,7 +89,7 @@ volumes:
 	_ = json.Unmarshal(rr.Body.Bytes(), &login)
 	csrf, _ := login["csrfToken"].(string)
 
-	return &uploadFixture{handler: h, ro: ro, rw: rw, cookies: rr.Result().Cookies(), csrf: csrf}
+	return &uploadFixture{handler: h, server: srv, ro: ro, rw: rw, cookies: rr.Result().Cookies(), csrf: csrf}
 }
 
 func (f *uploadFixture) upload(t *testing.T, volume, dir, name, conflict string, body io.Reader) *httptest.ResponseRecorder {
@@ -302,12 +304,43 @@ func TestUploadSweepsAbandonedStagingFiles(t *testing.T) {
 	if err := os.WriteFile(orphan, []byte("abandoned"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	old := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(orphan, old, old); err != nil {
+		t.Fatal(err)
+	}
 	rr := f.upload(t, "rw", "", "fresh.txt", "", strings.NewReader("ok"))
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", rr.Code)
 	}
 	if _, err := os.Stat(orphan); !os.IsNotExist(err) {
 		t.Fatal("abandoned staging file was not swept")
+	}
+}
+
+func TestUploadDoesNotSweepFreshConcurrentStagingFile(t *testing.T) {
+	f := newUploadFixture(t)
+	active := filepath.Join(f.rw, appfs.UploadStagingPrefix+"active")
+	if err := os.WriteFile(active, []byte("still uploading"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rr := f.upload(t, "rw", "", "fresh.txt", "", strings.NewReader("ok"))
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", rr.Code)
+	}
+	if got, err := os.ReadFile(active); err != nil || string(got) != "still uploading" {
+		t.Fatalf("fresh staging file was swept: err=%v got=%q", err, got)
+	}
+}
+
+func TestUploadHonorsConfiguredLimit(t *testing.T) {
+	f := newUploadFixture(t)
+	f.server.MaxUploadBytes = 4
+	rr := f.upload(t, "rw", "", "too-large.bin", "", strings.NewReader("12345"))
+	if rr.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(f.rw, "too-large.bin")); !os.IsNotExist(err) {
+		t.Fatal("oversized upload reached its final name")
 	}
 }
 

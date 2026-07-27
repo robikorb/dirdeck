@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -172,14 +173,16 @@ func (s *Service) SaveUpload(
 // SweepUploadStaging removes abandoned upload staging files from a directory.
 // A killed process cannot run its own cleanup, so orphans are collected the
 // next time the folder is used as an upload destination.
-func (s *Service) SweepUploadStaging(volumeID, parentRel string) {
+func (s *Service) SweepUploadStaging(volumeID, parentRel string, olderThan time.Duration) {
 	entries, err := s.listDirectory(volumeID, parentRel, false, 0)
 	if err != nil {
 		return
 	}
+	cutoff := time.Now().Add(-olderThan)
 	for _, e := range entries.Entries {
 		if !e.IsDir && len(e.Name) > len(UploadStagingPrefix) &&
-			e.Name[:len(UploadStagingPrefix)] == UploadStagingPrefix {
+			e.Name[:len(UploadStagingPrefix)] == UploadStagingPrefix &&
+			(olderThan <= 0 || e.ModTime.Before(cutoff)) {
 			_ = s.Remove(volumeID, e.Path)
 		}
 	}

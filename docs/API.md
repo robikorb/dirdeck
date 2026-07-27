@@ -307,7 +307,9 @@ progress, and a cancelled request aborts exactly one file.
 | `conflict` | `error` (default), `skip`, `replace`, or `rename` |
 
 Body: the raw file bytes. `Content-Length` is used for a free-space check before
-anything is written, and the written total must match it exactly.
+anything is written, and the written total must match it exactly. Both declared
+and chunked requests are bounded by `DIRDECK_MAX_UPLOAD_BYTES` (1 TiB by
+default); oversized requests return `413`.
 
 - Requires authentication and CSRF.
 - Read-only volumes return `403`.
@@ -323,7 +325,8 @@ Bytes land in a `.dirdeck-upload-*` staging file in the destination directory an
 are promoted with a single rename, so partial data never appears under the real
 name. A truncated body removes the staging file and returns `400`. Abandoned
 staging files from a killed process are swept when the folder is next used as an
-upload destination.
+upload destination. A staging file younger than 24 hours is left alone so one
+concurrent upload cannot remove another upload that is still in flight.
 
 ### Folder upload
 

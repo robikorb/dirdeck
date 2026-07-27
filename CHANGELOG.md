@@ -16,13 +16,24 @@ after the first stable release.
   indistinguishable at 14px, and with a read-only destination every control was
   disabled except **Delete permanently** — leaving the destructive action as the
   only thing you could press, with nothing on screen explaining why.
-- **Touch and small screens.** The interaction model is unchanged, but the
-  chrome stops eating the screen and the controls stop being 16px. Measured at
-  390x844: the sidebar went from 200px to 152px (24% of the phone down to 18%)
-  and became a horizontal volume switcher, each pane went from 296px to 859px,
-  and controls under the 44px touch target went from 44 of 45 to **0 of 55**.
-  Below 1280px the sidebar no longer clips the second volume. Desktop density is
-  untouched — icon buttons stay 28-32px and rows stay 38px.
+- **Phones now have a purpose-built single-pane workspace.** The active folder
+  owns the screen, locations open in a drawer, file actions stay in a thumb
+  dock, and details open as a bottom sheet. Copy and Move become a guided
+  source-to-destination flow instead of stacking two unusably short panes.
+  Desktop keeps the orthodox dual-pane workflow and density.
+- List and grid entries now use roving keyboard focus and valid selection
+  semantics. The active pane is announced, the editor is reachable with `E`,
+  and rename, new-folder, and permanent-delete dialogs trap focus, close with
+  Escape, and restore focus.
+- Uploads now have a configurable per-file server limit
+  (`DIRDECK_MAX_UPLOAD_BYTES`, 1 TiB by default). Unknown-length streams are
+  bounded too, and stale staging cleanup leaves files younger than 24 hours
+  alone so concurrent uploads cannot delete each other.
+- Transfer and upload progress animations now use compositor transforms rather
+  than repeatedly laying out width.
+- Transfer controls now name the full destination folder. Transfer history
+  uses a readable Copy/Move label and separate progress facts instead of a log
+  prefix and one dense telemetry sentence.
 
 - **`scripts/update.sh` now works on both stacks and needs no version number.**
   It detects whether the image stack or the source stack is running, and on the

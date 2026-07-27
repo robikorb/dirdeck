@@ -96,11 +96,17 @@ printed once and only its Argon2id hash is stored, so save it now.
 
 While the project is in release candidates the Compose file pins an exact
 version rather than `latest`, because `latest` is reserved for stable releases.
-To move to a newer build, set the version and pull:
+To move to a newer build, record the version in `.env` and pull:
 
 ```bash
-DIRDECK_VERSION=0.2.0-rc.5 docker compose pull && docker compose up -d
+echo "DIRDECK_VERSION=<new version>" > .env
+docker compose pull && docker compose up -d
 ```
+
+Put it in `.env` rather than passing it inline. `compose.yml` still contains the
+version that shipped with it, so a later plain `docker compose up -d` — after a
+reboot, or when you add a mount — would silently recreate the container on that
+older image. `.env` is read every time, so the version sticks.
 
 Every directory you mount under `/mnt/volumes/` shows up automatically — the
 name after `/mnt/volumes/` is what you see in the sidebar. No config file, no
@@ -139,14 +145,29 @@ That compiles the Go binary and the frontend, prompts for credentials, and uses
 
 ## Updating without losing settings
 
+**If you installed from `compose.yml`** — the quick start above, and what almost
+everyone should use — set the new version and pull:
+
+```bash
+echo "DIRDECK_VERSION=<new version>" > .env
+docker compose pull && docker compose up -d
+```
+
+Your session, administrator password, favorites, preferences, and transfer
+history live in the Docker volume `dirdeck-data` and are untouched by this. You
+are not signed out, and no new password is printed.
+
+**If you cloned the repository** and build from source, use the updater instead:
+
 ```bash
 ./scripts/update.sh
 ```
 
-The updater stops the app briefly, creates a backup, fast-forwards the Git
-checkout, rebuilds the image, recreates the container, and verifies readiness.
-The stable Docker volume `liquid-glass-file-manager_app-state`, local `.env`,
-credentials, and volume configuration are preserved.
+It stops the app briefly, creates a backup, fast-forwards the Git checkout,
+rebuilds the image, recreates the container, and verifies readiness. The source
+stack keeps its state in `liquid-glass-file-manager_app-state`, a different
+volume from the one above — `scripts/update.sh` needs a Git checkout and
+`compose.build.yml`, so it does not work on a `compose.yml`-only install.
 
 Never run `docker compose down -v` unless you intentionally want to delete the
 application database. Mounted user files are never stored in the application

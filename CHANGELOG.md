@@ -3,6 +3,30 @@
 All notable changes are recorded here. The project follows semantic versioning
 after the first stable release.
 
+## Unreleased
+
+### Fixed
+
+- **The documented upgrade path could silently downgrade the application.** The
+  README told you to pass `DIRDECK_VERSION` inline. That works once, but
+  `compose.yml` still contains the version it shipped with, so the next plain
+  `docker compose up -d` — after a reboot, or when adding a mount — recreated
+  the container on the older image with no warning. Reproduced going from
+  rc.5 back to rc.4. The version now goes in `.env`, which Compose reads every
+  time.
+- The README's update command was pinned to the current release, so it told a
+  user on rc.5 to upgrade to rc.5. It is a placeholder now.
+- "Updating without losing settings" documented only `scripts/update.sh`, which
+  fast-forwards a Git checkout and builds from `compose.build.yml`. Anyone who
+  installed the documented way — download `compose.yml`, `docker compose up -d`
+  — has neither a checkout nor that file. Both paths are now written out
+  separately.
+- `docs/UPGRADING.md` named `liquid-glass-file-manager_app-state` as *the*
+  default state volume and stated the default had not changed. That is true of
+  the source stack only; the image stack uses `dirdeck-data`. Backup and restore
+  aimed at the wrong volume would not have failed loudly, because Docker creates
+  a missing volume on demand.
+
 ## 0.2.0-rc.5 - 2026-07-27
 
 A UX review pass. Three of the fixes below are regressions introduced in rc.3

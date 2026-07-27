@@ -11,8 +11,24 @@
 | Host-specific bind mounts | `compose.override.yml` | preserved and gitignored |
 | User media and documents | host bind mounts | never stored in app state |
 
-The default state volume name is `liquid-glass-file-manager_app-state`. Keep this
-name stable after installation.
+**The default state volume name depends on which stack you installed**, and
+getting this wrong points backup and restore at the wrong volume — Docker
+creates a missing volume on demand rather than failing, so the mistake looks
+like success:
+
+| Install | Compose file | Default state volume |
+|---|---|---|
+| Quick start (image) | `compose.yml` | `dirdeck-data` |
+| From source | `compose.build.yml` | `liquid-glass-file-manager_app-state` |
+
+Confirm which one you have before running anything below:
+
+```bash
+docker compose config | grep -A2 '^volumes:'
+```
+
+Either way, `DIRDECK_DATA_VOLUME` overrides it. Keep the name stable after
+installation.
 
 ## Version notes
 
@@ -24,7 +40,7 @@ changes**; everything below is compatible on purpose.
 | Surface | Before | Now | What you must do |
 |---|---|---|---|
 | Environment prefix | `LGFM_*` | `DIRDECK_*` | Nothing. Old names still work and log a one-line deprecation notice |
-| State volume default | `liquid-glass-file-manager_app-state` | unchanged | Nothing. The default was **not** changed, so no database moves |
+| State volume default (source stack) | `liquid-glass-file-manager_app-state` | unchanged | Nothing. The default was **not** changed for existing installs, so no database moves. The image stack introduced in 0.2.0 uses `dirdeck-data`; see the table above |
 | Compose project name | directory name | unchanged | Nothing. The project name is deliberately not pinned, so your containers are not orphaned |
 | Git remote | `…/liquid-glass-file-manager.git` | `…/dirdeck.git` | Nothing. GitHub redirects the old URL |
 | API paths | `/api/…` | unchanged | Nothing |

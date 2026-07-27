@@ -2630,12 +2630,26 @@ input:focus-visible,
   }
 
   .pane-header {
-    min-height: 48px;
-    gap: 2px;
-    padding: 4px 8px;
+    min-height: 56px;
+    padding: 6px 8px;
   }
 
   .pane-header h2 {
+    display: none;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(7, 44px);
+    align-items: center;
+    justify-content: space-between;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .topbar-actions::-webkit-scrollbar {
     display: none;
   }
 
@@ -2645,13 +2659,23 @@ input:focus-visible,
     min-width: 44px;
     height: 44px;
     min-height: 44px;
+    justify-self: center;
+    padding: 0;
+    border-radius: 12px;
   }
 
-  .pane-toolbar {
-    width: 100%;
-    flex-wrap: nowrap;
-    justify-content: flex-end;
-    gap: 0;
+  .pane-header .upload-btn {
+    display: grid;
+    place-items: center;
+  }
+
+  .pane-header .upload-btn span {
+    display: none;
+  }
+
+  .pane-header .upload-btn svg {
+    width: 18px;
+    height: 18px;
   }
 
   .breadcrumb {

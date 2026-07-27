@@ -105,7 +105,7 @@ completes normally.
 Your project name, containers, state volume, credentials, and volume registry
 are unchanged. Nothing is migrated.
 
-### Upgrading to 0.2.0-rc.6
+### Upgrading to 0.2.0-rc.7
 
 No database or mount migration is required. Existing credentials, sessions,
 favorites, pane state, transfer history, and host bind mounts are preserved.

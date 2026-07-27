@@ -21,7 +21,7 @@ services:
     # Pinned while the project is in release candidates: `latest` only moves on a
     # stable release, so defaulting to it would leave this file pointing at a tag
     # that does not exist. Set DIRDECK_VERSION to upgrade.
-    image: ghcr.io/robikorb/dirdeck:${DIRDECK_VERSION:-0.2.0-rc.6}
+    image: ghcr.io/robikorb/dirdeck:${DIRDECK_VERSION:-0.2.0-rc.7}
     container_name: dirdeck
     restart: unless-stopped
     stop_grace_period: 30s

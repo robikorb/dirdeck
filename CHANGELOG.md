@@ -3,6 +3,14 @@
 All notable changes are recorded here. The project follows semantic versioning
 after the first stable release.
 
+## 0.2.0-rc.7 - 2026-07-27
+
+### Fixed
+
+- The phone toolbar now uses the actual `.topbar-actions` component and seven
+  evenly distributed 44px touch targets. Upload labels no longer overflow
+  their compact buttons or collide with the new-folder and selection icons.
+
 ## 0.2.0-rc.6 - 2026-07-27
 
 ### Changed

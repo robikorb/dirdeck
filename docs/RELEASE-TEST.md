@@ -15,39 +15,59 @@ The release candidate must be installable without unpublished local knowledge.
 4. Confirm the published image manifest lists both `linux/amd64` and
    `linux/arm64`, and that it is pullable anonymously.
 
+5. **Create the GitHub Release object.** The Release workflow publishes the
+   image only; pushing a tag does not produce a release page, and a tag without
+   one is invisible on the Releases tab — which is where people look for what
+   changed and how to install. v0.2.0-rc.3 through rc.5 were each published
+   without one and had to be backfilled.
+
+   ```bash
+   gh release create v<version> \
+     --title "DirDeck v<version>" \
+     --notes-file <notes> \
+     --prerelease --verify-tag
+   ```
+
+   The notes are the matching `CHANGELOG.md` section plus an install block
+   pinned to that exact version. `--prerelease` is mandatory for a candidate: it
+   keeps the tag out of the "Latest release" slot, the same guarantee withholding
+   `latest` gives on the image side. When a release supersedes an earlier one
+   that had a defect, say so at the top of the older notes rather than editing
+   them into silence.
+
 ### Operator path — the one that matters
 
-5. Use a clean host directory that has never contained this project.
-6. Install exactly the way the README says: download `compose.yml` from the
+6. Use a clean host directory that has never contained this project.
+7. Install exactly the way the README says: download `compose.yml` from the
    published ref and run `docker compose up -d`. Do not clone, do not build from
    source, and **do not edit the file** — editing the image tag to work around a
    missing one is how a broken default reaches users. Remove any locally built
    image with the same name first, or a stale local copy will satisfy the pull
    and hide the problem.
-7. Confirm the first start prints an administrator password exactly once, that
+8. Confirm the first start prints an administrator password exactly once, that
    only its hash is stored, and that restarting neither reprints it nor resets
    it.
-8. Confirm a directory bind-mounted under `/mnt/volumes/` is discovered without
+9. Confirm a directory bind-mounted under `/mnt/volumes/` is discovered without
    any registry file, and that it stays read-only until named in
    `DIRDECK_WRITABLE`.
-9. Verify login, health, ready, and persistence across a container restart.
-10. Confirm Compose binds to `127.0.0.1` by default and that LAN access appears
+10. Verify login, health, ready, and persistence across a container restart.
+11. Confirm Compose binds to `127.0.0.1` by default and that LAN access appears
     only after explicitly setting `DIRDECK_BIND_ADDR=0.0.0.0`.
 
 ### Source path
 
-11. Separately clone the repository and run `./setup.sh`, which builds from
+12. Separately clone the repository and run `./setup.sh`, which builds from
     source through `compose.build.yml`.
-12. Confirm `compose.override.yml`, `config/volumes.yaml`, `.env`, and secrets
+13. Confirm `compose.override.yml`, `config/volumes.yaml`, `.env`, and secrets
     remain untracked and unchanged after a pull and rebuild.
 
 ### Upgrade path
 
-13. From the previous release, run `./scripts/update.sh` and confirm settings,
+14. From the previous release, run `./scripts/update.sh` and confirm settings,
     credentials, transfer history, and mounted files survive.
-14. Confirm a pre-rename `.env` using `LGFM_*` still resolves, including
+15. Confirm a pre-rename `.env` using `LGFM_*` still resolves, including
     `LGFM_BIND_ADDR`, which Compose must translate rather than silently drop.
-15. Confirm `./scripts/backup.sh` archives the volume named in `.env` and
+16. Confirm `./scripts/backup.sh` archives the volume named in `.env` and
     refuses to run when that volume does not exist.
 
 ## Storage validation order
